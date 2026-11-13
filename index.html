@@ -13,129 +13,217 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <style>
-html{background:#dde4ec;-webkit-text-size-adjust:100%}
-@media (prefers-color-scheme: dark){html{background:#141a22}}
+html{background:#e8edf6;-webkit-text-size-adjust:100%}
+@media (prefers-color-scheme: dark){html:not([data-theme="light"]){background:#070b14}}
+html[data-theme="dark"]{background:#070b14}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
-.card,nav.tabs button,.btn{-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.card,.dock button,.btn,.seg button{-webkit-user-select:none;user-select:none;touch-action:manipulation}
 [hidden]{display:none!important}
 </style>
+<script>
+try { var t = localStorage.getItem('vokabel-theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
 <title>Vokabel-Karteikasten</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=Kalam:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Kalam:wght@400;700&display=swap">
 <style>
-/* Layout: a desk surface with one ruled index card (5 × 3) at the centre; tools sit around it in tabs. */
+/* Layout: paper index cards floating over a soft, colourful glass desk; one floating glass dock for navigation. */
 :root {
-  --desk: #dde4ec;
-  --surface: #eef2f7;
+  --bg: #e8edf6;
+  --blob-a: #7ea6ff;
+  --blob-b: #ffa08f;
+  --blob-c: #7fdcc2;
+  --glass: rgba(255, 255, 255, .38);
+  --glass-strong: rgba(255, 255, 255, .66);
+  --glass-border: rgba(255, 255, 255, .78);
+  --hl: rgba(255, 255, 255, .95);
+  --shadow-c: rgba(30, 45, 80, .14);
+  --field: rgba(255, 255, 255, .62);
+  --field-border: rgba(20, 35, 70, .12);
+  --ink: #0e1829;
+  --muted: #4c5a70;
+  --line: rgba(20, 35, 70, .12);
+  --accent: #2463eb;
+  --accent-ink: #ffffff;
+  --good: #1d7a49;
+  --bad: #c2392f;
+  --warn: #a15800;
   --paper: #fffefa;
   --rule: #bcd2ea;
   --red-line: #df5a5e;
-  --ink: #1b2838;
-  --muted: #56677b;
-  --line: #c3cedb;
-  --accent: #2c5bc9;
-  --accent-ink: #ffffff;
-  --good: #23784b;
-  --bad: #b8433a;
-  --warn: #a35a00;
-  --shadow: 0 1px 2px rgba(27,40,56,.08), 0 10px 28px rgba(27,40,56,.12);
-  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --card-shadow: 0 2px 4px rgba(20,35,70,.06), 0 18px 40px rgba(20,35,70,.16);
+  --f-ui: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, system-ui, sans-serif;
   --f-hand: "Kalam", "Comic Sans MS", "Segoe Print", cursive;
+  --r-lg: 26px;
+  --r-md: 16px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --desk: #141a22; --surface: #1b232d; --paper: #222b36; --rule: #33475d; --red-line: #e2696c;
-    --ink: #e7edf4; --muted: #9babbd; --line: #314050; --accent: #7ea4ff; --accent-ink: #0f1722;
-    --good: #5cc88f; --bad: #f08174; --warn: #f2b25c; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px rgba(0,0,0,.35);
+    --bg: #070b14; --blob-a: #2a4fd6; --blob-b: #a8372f; --blob-c: #0f7d64;
+    --glass: rgba(28, 36, 54, .42); --glass-strong: rgba(44, 54, 78, .58); --glass-border: rgba(255, 255, 255, .16);
+    --hl: rgba(255, 255, 255, .22); --shadow-c: rgba(0, 0, 0, .45); --field: rgba(8, 12, 22, .42); --field-border: rgba(255, 255, 255, .12);
+    --ink: #eef3fb; --muted: #a6b3c8; --line: rgba(255, 255, 255, .12); --accent: #7ea8ff; --accent-ink: #06101f;
+    --good: #5fd497; --bad: #ff8a7d; --warn: #f5b862; --paper: #232c39; --rule: #364a61; --red-line: #e4696c;
+    --card-shadow: 0 2px 4px rgba(0,0,0,.3), 0 18px 40px rgba(0,0,0,.45);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --desk: #141a22; --surface: #1b232d; --paper: #222b36; --rule: #33475d; --red-line: #e2696c;
-  --ink: #e7edf4; --muted: #9babbd; --line: #314050; --accent: #7ea4ff; --accent-ink: #0f1722;
-  --good: #5cc88f; --bad: #f08174; --warn: #f2b25c; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px rgba(0,0,0,.35);
+  --bg: #070b14; --blob-a: #2a4fd6; --blob-b: #a8372f; --blob-c: #0f7d64;
+  --glass: rgba(28, 36, 54, .42); --glass-strong: rgba(44, 54, 78, .58); --glass-border: rgba(255, 255, 255, .16);
+  --hl: rgba(255, 255, 255, .22); --shadow-c: rgba(0, 0, 0, .45); --field: rgba(8, 12, 22, .42); --field-border: rgba(255, 255, 255, .12);
+  --ink: #eef3fb; --muted: #a6b3c8; --line: rgba(255, 255, 255, .12); --accent: #7ea8ff; --accent-ink: #06101f;
+  --good: #5fd497; --bad: #ff8a7d; --warn: #f5b862; --paper: #232c39; --rule: #364a61; --red-line: #e4696c;
+  --card-shadow: 0 2px 4px rgba(0,0,0,.3), 0 18px 40px rgba(0,0,0,.45);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body {
-  background: var(--desk); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.5;
+  background: var(--bg); color: var(--ink); font-family: var(--f-ui); font-size: 16px; line-height: 1.5;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 20px 48px;
+  padding-block: 18px calc(118px + env(safe-area-inset-bottom, 0px));
+  min-height: 100vh; position: relative; isolation: isolate;
 }
-.wrap { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
-h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.15; }
-h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -.01em; }
-h2 { font-size: 1.2rem; font-weight: 600; }
+/* the colourful desk behind the glass */
+body::before {
+  content: ""; position: fixed; inset: -20vmax; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(38vmax 38vmax at 12% 18%, var(--blob-a), transparent 70%),
+    radial-gradient(34vmax 34vmax at 92% 30%, var(--blob-b), transparent 70%),
+    radial-gradient(40vmax 40vmax at 50% 95%, var(--blob-c), transparent 70%);
+  opacity: .9; filter: saturate(125%);
+  animation: drift 26s ease-in-out infinite alternate;
+}
+@keyframes drift { from { transform: translate3d(0, 0, 0) rotate(0deg); } to { transform: translate3d(-3vmax, 2vmax, 0) rotate(8deg); } }
+
+.wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: 2.1rem; font-weight: 800; letter-spacing: -.025em; }
+h2 { font-size: 1.12rem; font-weight: 700; letter-spacing: -.01em; }
 .muted { color: var(--muted); }
-small, .small { font-size: .85rem; }
+small, .small { font-size: .86rem; }
+p { margin: 0; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-header.top { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; justify-content: space-between; }
-.brand { display: flex; flex-direction: column; gap: 2px; }
-.brand p { margin: 0; color: var(--muted); font-size: .92rem; }
-.deck-pick { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 0 1 320px; }
-label.lbl { font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
-
-select, input[type="text"], input[type="password"], textarea {
-  font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line);
-  border-radius: 8px; padding: 9px 11px; width: 100%; min-width: 0;
+/* ---------- glass ---------- */
+.glass, .group, .boxes, .summary, .empty, .dock, .deck-pill, .toast, .confirm {
+  background: linear-gradient(160deg, var(--glass-strong), var(--glass));
+  -webkit-backdrop-filter: blur(24px) saturate(175%); backdrop-filter: blur(24px) saturate(175%);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--hl),
+    inset 0 -1px 1px rgba(255, 255, 255, .08),
+    0 10px 34px var(--shadow-c);
 }
-textarea { font-family: var(--f-body); resize: vertical; min-height: 180px; line-height: 1.6; }
-select:focus-visible, input:focus-visible, textarea:focus-visible, button:focus-visible, .card:focus-visible {
+.group { border-radius: var(--r-lg); padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.group-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* ---------- header ---------- */
+header.top { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; }
+.title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sub { color: var(--muted); font-size: .95rem; }
+.deck-pill { display: flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 6px 4px 12px; min-width: 0; max-width: 100%; }
+.deck-pill svg { flex: none; color: var(--accent); }
+.deck-pill select { border: 0; background: transparent; padding: 6px 4px; font-weight: 600; max-width: 230px; box-shadow: none; }
+
+/* ---------- controls ---------- */
+label.lbl { font-size: .78rem; color: var(--muted); font-weight: 600; letter-spacing: .01em; padding-left: 4px; }
+select, input[type="text"], input[type="password"], textarea {
+  font: inherit; color: var(--ink); background: var(--field); border: 1px solid var(--field-border);
+  border-radius: 14px; padding: 11px 13px; width: 100%; min-width: 0;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .04);
+}
+textarea { resize: vertical; min-height: 160px; line-height: 1.6; }
+select:focus-visible, input:focus-visible, textarea:focus-visible, button:focus-visible, .card:focus-visible, a:focus-visible {
   outline: 3px solid var(--accent); outline-offset: 2px;
 }
-
-nav.tabs { display: flex; gap: 4px; background: var(--surface); padding: 4px; border-radius: 10px; border: 1px solid var(--line); }
-nav.tabs button {
-  flex: 1; font: inherit; font-weight: 700; border: 0; background: transparent; color: var(--muted);
-  padding: 9px 10px; border-radius: 7px; cursor: pointer;
-}
-nav.tabs button[aria-selected="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+input[type="checkbox"] { accent-color: var(--accent); width: 18px; height: 18px; }
 
 .btn {
-  font: inherit; font-weight: 700; border: 1px solid var(--line); background: var(--paper); color: var(--ink);
-  padding: 10px 16px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; justify-content: center;
+  font: inherit; font-weight: 650; font-size: .95rem; color: var(--ink);
+  background: linear-gradient(180deg, var(--glass-strong), var(--glass));
+  border: 1px solid var(--glass-border); border-radius: 999px; padding: 11px 18px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; justify-content: center;
+  box-shadow: inset 0 1px 0 var(--hl), 0 4px 14px var(--shadow-c);
+  transition: transform .15s ease, filter .15s ease;
 }
-.btn:hover { border-color: var(--muted); }
-.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.btn.primary:hover { filter: brightness(1.08); }
-.btn.good { background: var(--good); border-color: var(--good); color: var(--paper); }
-.btn.bad { background: var(--bad); border-color: var(--bad); color: var(--paper); }
-.btn.ghost { background: transparent; }
+.btn:hover { filter: brightness(1.05); }
+.btn:active { transform: scale(.97); }
+.btn.primary, .btn.good, .btn.bad {
+  color: #fff; border-color: rgba(255, 255, 255, .35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), inset 0 -2px 6px rgba(0, 0, 0, .12), 0 6px 18px var(--shadow-c);
+}
+.btn.primary { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 78%, #fff), var(--accent)); color: var(--accent-ink); }
+.btn.good { background: linear-gradient(180deg, color-mix(in srgb, var(--good) 78%, #fff), var(--good)); color: var(--accent-ink); }
+.btn.bad { background: linear-gradient(180deg, color-mix(in srgb, var(--bad) 78%, #fff), var(--bad)); color: var(--accent-ink); }
+.btn.ghost { background: transparent; box-shadow: none; border-color: transparent; }
 .btn.danger { color: var(--bad); }
-.btn:disabled { opacity: .5; cursor: not-allowed; }
-kbd { font-family: ui-monospace, monospace; font-size: .75em; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; opacity: .75; }
+.btn.icon { padding: 10px; flex: none; }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.btn.busy { opacity: .55; pointer-events: none; }
+kbd { font-family: ui-monospace, monospace; font-size: .72em; border: 1px solid currentColor; border-radius: 5px; padding: 0 4px; opacity: .75; }
+.link { border: 0; background: transparent; color: var(--accent); font: inherit; font-weight: 650; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 
-.panel { display: flex; flex-direction: column; gap: 18px; }
-.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
-.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 180px; }
+.panel { display: flex; flex-direction: column; gap: 16px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; flex: 1 1 180px; }
+.group > .field, .panel > .field, details > .field { flex: 0 0 auto; }
+.check { display: flex; gap: 8px; align-items: center; font-size: .9rem; }
 
-/* Leitner boxes */
-.boxes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-.box {
-  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
-  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+/* segmented control */
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 999px; background: var(--field); border: 1px solid var(--field-border); }
+.seg button { font: inherit; font-weight: 600; font-size: .92rem; border: 0; background: transparent; color: var(--muted); padding: 9px 8px; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--glass-strong); color: var(--ink); box-shadow: inset 0 1px 0 var(--hl), 0 2px 8px var(--shadow-c); }
+
+/* ---------- dock ---------- */
+.dock {
+  position: fixed; z-index: 20; left: 50%; transform: translateX(-50%);
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  width: min(480px, calc(100% - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+  display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px; border-radius: 32px;
+  --i: 0;
 }
-.box .n { font-family: var(--f-display); font-weight: 800; font-size: 1.4rem; font-variant-numeric: tabular-nums; line-height: 1; }
-.box .t { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+.dock .lens {
+  position: absolute; top: 6px; bottom: 6px; left: 6px; width: calc((100% - 12px) / 4); border-radius: 26px;
+  background: linear-gradient(180deg, var(--glass-strong), rgba(255, 255, 255, .12));
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 var(--hl), inset 0 -1px 2px rgba(255, 255, 255, .15), 0 4px 14px var(--shadow-c);
+  transform: translateX(calc(var(--i) * 100%)); transition: transform .45s cubic-bezier(.3, 1.35, .5, 1);
+}
+.dock button {
+  position: relative; z-index: 1; font: inherit; border: 0; background: transparent; color: var(--muted); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 7px; border-radius: 26px;
+  font-size: .72rem; font-weight: 650; letter-spacing: .01em;
+}
+.dock button svg { width: 24px; height: 24px; }
+.dock button { white-space: nowrap; }
+@media (max-width: 380px) { .dock button { font-size: .62rem; } }
+.dock button[aria-selected="true"] { color: var(--accent); }
+
+/* ---------- Leitner boxes ---------- */
+.boxes { display: grid; grid-template-columns: repeat(5, 1fr); border-radius: var(--r-lg); padding: 6px; }
+.box { padding: 10px 10px 12px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.box + .box { border-left: 1px solid var(--line); }
+.box .n { font-weight: 800; font-size: 1.5rem; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -.02em; }
+.box .t { font-size: .72rem; color: var(--muted); font-weight: 650; }
 .box .bar { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
-.box .bar i { display: block; height: 100%; background: var(--accent); }
+.box .bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
 .box:nth-child(5) .bar i { background: var(--good); }
 
-/* Index card */
+/* ---------- index card ---------- */
 .stage { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .progress { width: 100%; max-width: 600px; display: flex; align-items: center; gap: 12px; font-variant-numeric: tabular-nums; }
 .progress .track { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
-.progress .track i { display: block; height: 100%; background: var(--accent); transition: width .25s; }
-.card { width: 100%; max-width: 600px; aspect-ratio: 5 / 3; perspective: 1400px; cursor: pointer; border-radius: 6px; }
-.card-inner { position: relative; width: 100%; height: 100%; transition: transform .45s cubic-bezier(.3,.7,.2,1); transform-style: preserve-3d; }
+.progress .track i { display: block; height: 100%; background: var(--accent); transition: width .25s; border-radius: 3px; }
+.card { width: 100%; max-width: 600px; aspect-ratio: 5 / 3; perspective: 1400px; cursor: pointer; border-radius: 14px; }
+.card-inner { position: relative; width: 100%; height: 100%; transition: transform .5s cubic-bezier(.3,.7,.2,1); transform-style: preserve-3d; }
 .card.flipped .card-inner { transform: rotateY(180deg); }
 .face {
   position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
-  background-color: var(--paper); border-radius: 6px; box-shadow: var(--shadow);
+  background-color: var(--paper); border-radius: 14px; box-shadow: var(--card-shadow);
   background-image:
     linear-gradient(var(--red-line), var(--red-line)),
     repeating-linear-gradient(to bottom, transparent 0, transparent 31px, var(--rule) 31px, var(--rule) 32px);
@@ -145,7 +233,7 @@ kbd { font-family: ui-monospace, monospace; font-size: .75em; border: 1px solid 
   display: flex; flex-direction: column; padding: 14px 22px 18px;
 }
 .face.back { transform: rotateY(180deg); }
-.face .meta { height: 40px; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.face .meta { height: 40px; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
 .face .word {
   flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; overflow: auto;
   font-family: var(--f-hand); font-size: clamp(1.5rem, 5vw, 2.4rem); line-height: 1.25; padding-top: 8px; overflow-wrap: anywhere;
@@ -153,86 +241,101 @@ kbd { font-family: ui-monospace, monospace; font-size: .75em; border: 1px solid 
 .face.back .word { color: var(--accent); }
 .face .hint { text-align: center; font-size: .82rem; color: var(--muted); }
 .answer { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 600px; }
-.answer .btn { flex: 1 1 200px; padding: 13px 16px; }
+.answer .btn { flex: 1 1 140px; padding: 14px 12px; }
 
-.summary { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 600px; }
-.summary .big { font-family: var(--f-display); font-weight: 800; font-size: 2.2rem; font-variant-numeric: tabular-nums; }
-.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 10px; padding: 22px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.summary { border-radius: var(--r-lg); padding: 22px; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 600px; }
+.summary .big { font-weight: 800; font-size: 2.4rem; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.empty { border-radius: var(--r-lg); padding: 22px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 
-/* Card list */
-.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
-table { width: 100%; border-collapse: collapse; min-width: 480px; }
+/* ---------- card list ---------- */
+.tbl-wrap { overflow-x: auto; border-radius: var(--r-md); background: var(--field); border: 1px solid var(--field-border); }
+table { width: 100%; border-collapse: collapse; min-width: 440px; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-th { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--surface); }
+th { font-size: .76rem; color: var(--muted); font-weight: 650; }
 tr:last-child td { border-bottom: 0; }
-td input[type="text"] { border-color: transparent; background: transparent; padding: 6px 8px; }
-td input[type="text"]:hover { border-color: var(--line); }
+td input[type="text"] { border-color: transparent; background: transparent; padding: 7px 8px; box-shadow: none; border-radius: 10px; }
+td input[type="text"]:hover { border-color: var(--field-border); }
 td.num { font-variant-numeric: tabular-nums; text-align: center; width: 56px; }
 td.act { width: 44px; }
-.icon-btn { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 1.1rem; padding: 4px 8px; border-radius: 6px; }
-.icon-btn:hover { color: var(--bad); background: var(--surface); }
+.icon-btn { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 1.05rem; padding: 6px 9px; border-radius: 999px; }
+.icon-btn:hover { color: var(--bad); background: var(--field); }
 
-.format { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font-size: .92rem; display: flex; flex-direction: column; gap: 6px; }
-.format code { font-family: ui-monospace, Menlo, monospace; font-size: .88em; background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
-.preview { font-size: .92rem; }
+/* ---------- import ---------- */
+.format { font-size: .9rem; display: flex; flex-direction: column; gap: 4px; color: var(--muted); }
+.format code { font-family: ui-monospace, Menlo, monospace; font-size: .86em; background: var(--field); border: 1px solid var(--field-border); border-radius: 6px; padding: 1px 6px; color: var(--ink); }
+.preview { font-size: .9rem; }
 .preview.ok { color: var(--good); }
 .preview.warn { color: var(--bad); }
-details summary { cursor: pointer; font-weight: 700; }
-.confirm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--bad); border-radius: 8px; padding: 10px 12px; }
-
-.toast {
-  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
-  background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 8px; font-weight: 700; box-shadow: var(--shadow);
-  max-width: calc(100% - 32px);
-}
-@media (max-width: 520px) {
-  .card { aspect-ratio: 4 / 3; }
-  .boxes { gap: 5px; }
-  .box { padding: 6px; }
-  .box .t { font-size: .64rem; letter-spacing: .02em; }
-  .box .n { font-size: 1.15rem; }
-}
-.ocr { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-.ocr p { margin: 0; }
+details summary { cursor: pointer; font-weight: 650; }
+.confirm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-radius: var(--r-md); padding: 12px 14px; border-color: var(--bad); }
 .ocr-status { display: flex; flex-direction: column; gap: 6px; }
 .ocr-status .track { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
-.ocr-status .track i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.ocr-status .track i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; border-radius: 3px; }
 .ocr-status.error { color: var(--bad); }
 .ocr-status.done { color: var(--good); }
-.thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
-.thumbs figure { margin: 0; display: flex; flex-direction: column; gap: 2px; align-items: center; width: 76px; }
-.thumbs img { width: 76px; height: 76px; object-fit: cover; border-radius: 6px; border: 2px solid var(--line); display: block; }
+.photo-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.photo-btns .btn { padding: 14px 10px; white-space: nowrap; font-size: .92rem; }
+.thumbs { display: flex; flex-wrap: wrap; gap: 10px; }
+.thumbs figure { margin: 0; display: flex; flex-direction: column; gap: 3px; align-items: center; width: 74px; }
+.thumbs img { width: 74px; height: 74px; object-fit: cover; border-radius: 14px; border: 2px solid var(--glass-border); display: block; box-shadow: 0 4px 12px var(--shadow-c); }
 .thumbs .busy img { border-color: var(--accent); }
 .thumbs .ok img { border-color: var(--good); }
 .thumbs .bad img { border-color: var(--bad); }
 .thumbs figcaption { font-size: .72rem; color: var(--muted); text-align: center; line-height: 1.2; }
 .thumbs .ok figcaption { color: var(--good); } .thumbs .bad figcaption { color: var(--bad); }
-.btn.busy { opacity: .55; pointer-events: none; }
+.ai-hint { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; padding: 10px 12px; border-radius: var(--r-md); background: var(--field); border: 1px solid var(--field-border); }
+.ai-state { font-weight: 600; font-size: .88rem; flex: 1 1 200px; }
+.ai-state.on { color: var(--good); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: 1px; }
+.ai-state.on .dot { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
+.check-msg.error { color: var(--bad); }
 .review { display: flex; flex-direction: column; gap: 8px; }
 .review-head { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; align-items: center; font-weight: 700; }
-.review-head label { font-weight: 400; display: flex; gap: 6px; align-items: center; font-size: .9rem; }
-.rv { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) auto; gap: 6px; align-items: center; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
-.rv.lvl-warn { border-color: var(--warn); }
-.rv.lvl-err { border-color: var(--bad); }
-.rv.lvl-fixed { border-color: var(--accent); }
+.review-head label { font-weight: 500; display: flex; gap: 6px; align-items: center; font-size: .88rem; }
+.rv { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) auto; gap: 6px; align-items: center; background: var(--field); border: 1px solid var(--field-border); border-radius: var(--r-md); padding: 8px; }
+.rv input[type="text"] { background: transparent; border-color: transparent; box-shadow: none; padding: 8px 9px; border-radius: 10px; }
+.rv input[type="text"]:focus, .rv input[type="text"]:hover { border-color: var(--field-border); }
+.rv.lvl-warn { border-color: color-mix(in srgb, var(--warn) 60%, transparent); }
+.rv.lvl-err { border-color: color-mix(in srgb, var(--bad) 60%, transparent); }
+.rv.lvl-fixed { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.rv-status { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: .84rem; color: var(--muted); padding-inline: 6px; }
+.chip { font-weight: 700; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; padding: 2px 9px; border-radius: 999px; background: color-mix(in srgb, currentColor 14%, transparent); }
+.chip.fixed { color: var(--accent); } .chip.ok { color: var(--good); } .chip.warn { color: var(--warn); } .chip.err { color: var(--bad); } .chip.wait { color: var(--muted); }
 .removed { font-size: .9rem; }
 .removed ul { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .removed li span { color: var(--muted); text-decoration: line-through; overflow-wrap: anywhere; }
-.ai-setup { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
-.ai-setup[open] summary { margin-bottom: 12px; }
-.ai-setup .panel { gap: 12px; }
-.ai-setup p { margin: 0; }
-.ai-state { margin: 0; font-weight: 700; }
-.ai-state.on { color: var(--good); }
-.check-msg { margin: 0; }
-.check-msg.error { color: var(--bad); }
-.rv-status { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: .86rem; color: var(--muted); padding-inline: 2px; }
-.chip { font-weight: 700; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; padding: 1px 8px; border-radius: 999px; border: 1.5px solid currentColor; }
-.chip.fixed { color: var(--accent); } .chip.ok { color: var(--good); } .chip.warn { color: var(--warn); } .chip.err { color: var(--bad); } .chip.wait { color: var(--muted); }
-.link { border: 0; background: transparent; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 2px; }
+.import-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.import-bar .btn { flex: 1 1 200px; padding: 14px 18px; }
+
+/* ---------- settings ---------- */
+.steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.key-row { display: flex; gap: 8px; align-items: center; }
+.key-row input { font-family: ui-monospace, Menlo, monospace; letter-spacing: .02em; }
+.adv summary { font-size: .9rem; color: var(--muted); }
+.adv[open] summary { margin-bottom: 10px; }
+.msg { font-size: .9rem; font-weight: 600; }
+.msg.ok { color: var(--good); } .msg.err { color: var(--bad); }
+
+.toast {
+  position: fixed; z-index: 30; left: 50%; transform: translateX(-50%);
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 18px; border-radius: 999px; font-weight: 650; max-width: calc(100% - 32px); color: var(--ink);
+}
+@media (max-width: 520px) {
+  h1 { font-size: 1.85rem; }
+  .box { padding: 8px 6px 10px; }
+  .box .t { font-size: .64rem; }
+  .box .n { font-size: 1.2rem; }
+  .group { padding: 16px 14px; border-radius: 22px; }
+  .deck-pill select { max-width: 170px; }
+}
 @media (hover: none) { kbd { display: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .card-inner, .progress .track i { transition: none; }
+  body::before { animation: none; }
+  .card-inner, .progress .track i, .dock .lens, .btn { transition: none; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass, .group, .boxes, .summary, .empty, .dock, .deck-pill, .toast, .confirm { background: var(--glass-strong); }
 }
 </style>
 </head>
@@ -240,21 +343,16 @@ details summary { cursor: pointer; font-weight: 700; }
 
 <div class="wrap">
   <header class="top">
-    <div class="brand">
-      <h1>Vokabel-Karteikasten</h1>
-      <p>Vokabeln einfügen, Karten umdrehen, mit 5 Fächern wiederholen.</p>
+    <div class="title-row">
+      <h1 id="pageTitle">Lernen</h1>
+      <div class="deck-pill" id="deckPill">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="11" rx="2"/><path d="M7 4h11a3 3 0 0 1 3 3v8"/></svg>
+        <label class="sr" for="deckSelect">Stapel</label>
+        <select id="deckSelect"></select>
+      </div>
     </div>
-    <div class="deck-pick">
-      <label class="lbl" for="deckSelect">Stapel</label>
-      <select id="deckSelect"></select>
-    </div>
+    <p class="sub" id="pageSub">Karten umdrehen und mit 5 Fächern wiederholen.</p>
   </header>
-
-  <nav class="tabs" role="tablist">
-    <button role="tab" id="tab-learn" data-tab="learn" aria-selected="true">Lernen</button>
-    <button role="tab" id="tab-cards" data-tab="cards" aria-selected="false">Karten</button>
-    <button role="tab" id="tab-import" data-tab="import" aria-selected="false">Importieren</button>
-  </nav>
 
   <!-- LERNEN -->
   <section class="panel" id="view-learn">
@@ -264,54 +362,61 @@ details summary { cursor: pointer; font-weight: 700; }
 
   <!-- KARTEN -->
   <section class="panel" id="view-cards" hidden>
-    <div class="row">
+    <div class="group">
       <div class="field">
         <label class="lbl" for="deckName">Name des Stapels</label>
         <input type="text" id="deckName">
       </div>
-      <button class="btn" id="resetProgress">Fortschritt zurücksetzen</button>
-      <button class="btn danger" id="deleteDeck">Stapel löschen</button>
-    </div>
-    <div id="deleteConfirm" hidden></div>
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr><th>Vorderseite</th><th>Rückseite</th><th>Fach</th><th><span class="muted">&nbsp;</span></th></tr></thead>
-        <tbody id="cardRows"></tbody>
-      </table>
-    </div>
-    <div class="row">
-      <div class="field"><label class="lbl" for="newFront">Neue Vorderseite</label><input type="text" id="newFront" placeholder="z. B. the bridge"></div>
-      <div class="field"><label class="lbl" for="newBack">Neue Rückseite</label><input type="text" id="newBack" placeholder="z. B. die Brücke"></div>
-      <button class="btn primary" id="addCard">Karte hinzufügen</button>
-    </div>
-    <details>
-      <summary>Stapel als Text exportieren</summary>
-      <div class="panel" style="margin-top:10px">
-        <textarea id="exportText" readonly></textarea>
-        <div><button class="btn" id="copyExport">Text kopieren</button></div>
+      <div class="row">
+        <button class="btn" id="resetProgress">Fortschritt zurücksetzen</button>
+        <button class="btn danger" id="deleteDeck">Stapel löschen</button>
       </div>
+      <div id="deleteConfirm" hidden></div>
+    </div>
+    <div class="group">
+      <h2>Karten</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Vorderseite</th><th>Rückseite</th><th>Fach</th><th><span class="sr">Löschen</span></th></tr></thead>
+          <tbody id="cardRows"></tbody>
+        </table>
+      </div>
+      <div class="row">
+        <div class="field"><label class="lbl" for="newFront">Neue Vorderseite</label><input type="text" id="newFront" placeholder="z. B. the bridge"></div>
+        <div class="field"><label class="lbl" for="newBack">Neue Rückseite</label><input type="text" id="newBack" placeholder="z. B. die Brücke"></div>
+        <button class="btn primary" id="addCard">Hinzufügen</button>
+      </div>
+    </div>
+    <details class="group">
+      <summary>Stapel als Text exportieren</summary>
+      <textarea id="exportText" readonly></textarea>
+      <div><button class="btn" id="copyExport">Text kopieren</button></div>
     </details>
   </section>
 
   <!-- IMPORT -->
   <section class="panel" id="view-import" hidden>
-    <div class="ocr">
-      <h2>Aus Fotos</h2>
-      <div class="row">
-        <div class="field">
-          <label class="lbl" for="ocrLang">Sprachen auf dem Foto</label>
-          <select id="ocrLang">
-            <option value="eng+deu">Englisch und Deutsch</option>
-            <option value="fra+deu">Französisch und Deutsch</option>
-            <option value="spa+deu">Spanisch und Deutsch</option>
-            <option value="lat+deu">Latein und Deutsch</option>
-            <option value="ita+deu">Italienisch und Deutsch</option>
-            <option value="deu">Nur Deutsch</option>
-          </select>
-        </div>
-        <label class="btn primary" for="ocrCam" id="ocrBtn">Foto aufnehmen</label>
+    <div class="group">
+      <div class="group-head"><h2>Aus Fotos</h2></div>
+      <div class="field">
+        <label class="lbl" for="ocrLang">Sprachen auf dem Foto</label>
+        <select id="ocrLang">
+          <option value="eng+deu">Englisch und Deutsch</option>
+          <option value="fra+deu">Französisch und Deutsch</option>
+          <option value="spa+deu">Spanisch und Deutsch</option>
+          <option value="lat+deu">Latein und Deutsch</option>
+          <option value="ita+deu">Italienisch und Deutsch</option>
+          <option value="deu">Nur Deutsch</option>
+        </select>
+      </div>
+      <div class="photo-btns">
+        <label class="btn primary" for="ocrCam" id="ocrBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>
+          Foto aufnehmen</label>
         <input type="file" id="ocrCam" accept="image/*" capture="environment" hidden>
-        <label class="btn" for="ocrFile" id="ocrBtn2">Fotos auswählen</label>
+        <label class="btn" for="ocrFile" id="ocrBtn2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>
+          Fotos auswählen</label>
         <input type="file" id="ocrFile" accept="image/*" multiple hidden>
       </div>
       <div class="ocr-status small" id="ocrStatus" hidden>
@@ -319,78 +424,132 @@ details summary { cursor: pointer; font-weight: 700; }
         <span class="track"><i id="ocrBar"></i></span>
       </div>
       <div class="thumbs" id="ocrThumbs" hidden></div>
-      <p class="small ai-state" id="aiState"></p>
-      <p class="small muted">Mehrere Seiten? Fotografiere sie nacheinander oder wähle mehrere Fotos auf einmal aus. Jedes Foto wird an die Liste unten angehängt, doppelte Vokabeln werden aussortiert. Fotografiere möglichst gerade und gut beleuchtet.</p>
-    </div>
-    <h2>Als Text</h2>
-    <div class="format">
-      <strong>So sieht deine Liste aus</strong>
-      <span>Eine Vokabel pro Zeile, Vorderseite und Rückseite getrennt durch <code> - </code>, <code> = </code>, <code>;</code>, <code>,</code> oder Tabulator.</span>
-      <span class="muted">Beispiel: <code>the house - das Haus</code> · <code>la maison;das Haus</code> · Spalten aus Excel direkt einfügen geht auch.</span>
-    </div>
-    <div class="row">
-      <div class="field">
-        <label class="lbl" for="importTarget">Ziel</label>
-        <select id="importTarget"></select>
+      <div class="ai-hint">
+        <p class="ai-state" id="aiState"></p>
+        <button class="link" data-go="settings" id="aiSetupLink">KI einrichten</button>
       </div>
-      <div class="field" id="newDeckField">
-        <label class="lbl" for="importName">Name des neuen Stapels</label>
-        <input type="text" id="importName" placeholder="z. B. Englisch Unit 4">
-      </div>
+      <p class="small muted">Mehrere Seiten? Fotografiere sie nacheinander oder wähle mehrere Fotos aus. Jedes Foto wird an die Liste angehängt, doppelte Vokabeln werden aussortiert.</p>
     </div>
-    <div class="field">
-      <label class="lbl" for="importText">Vokabeln</label>
-      <textarea id="importText" placeholder="the bridge - die Brücke&#10;to borrow - (sich) ausleihen&#10;although - obwohl"></textarea>
-    </div>
-    <div class="row" style="align-items:center">
-      <label class="btn" for="importFile">Datei wählen (.txt, .csv)</label>
-      <input type="file" id="importFile" accept=".txt,.csv,.tsv,text/plain,text/csv" hidden>
-      <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="swapSides"> Seiten tauschen</label>
-      <span class="preview" id="importPreview"></span>
-    </div>
-    <div class="row">
-      <div class="field">
-        <label class="lbl" for="langFront">Sprache Vorderseite</label>
-        <select id="langFront"><option value="en">Englisch</option><option value="fr">Französisch</option><option value="es">Spanisch</option><option value="la">Latein</option><option value="it">Italienisch</option><option value="de">Deutsch</option></select>
+
+    <div class="group">
+      <h2>Text oder Datei</h2>
+      <div class="format">
+        <span>Eine Vokabel pro Zeile, getrennt durch <code>-</code>, <code>=</code>, <code>;</code>, <code>,</code> oder Tabulator.</span>
+        <span>Beispiel: <code>the house - das Haus</code>. Spalten aus Excel gehen auch.</span>
       </div>
       <div class="field">
-        <label class="lbl" for="langBack">Sprache Rückseite</label>
-        <select id="langBack"><option value="de">Deutsch</option><option value="en">Englisch</option><option value="fr">Französisch</option><option value="es">Spanisch</option><option value="la">Latein</option><option value="it">Italienisch</option></select>
+        <label class="lbl" for="importText">Vokabeln</label>
+        <textarea id="importText" placeholder="the bridge - die Brücke&#10;to borrow - (sich) ausleihen&#10;although - obwohl"></textarea>
       </div>
-      <button class="btn" id="checkBtn" disabled>Vokabeln prüfen</button>
+      <div class="row" style="align-items:center">
+        <label class="btn" for="importFile">Datei wählen (.txt, .csv)</label>
+        <input type="file" id="importFile" accept=".txt,.csv,.tsv,text/plain,text/csv" hidden>
+        <label class="check"><input type="checkbox" id="swapSides"> Seiten tauschen</label>
+      </div>
     </div>
-    <p class="small check-msg" id="checkMsg" hidden></p>
-    <div class="review" id="review" hidden>
-      <div class="review-head"><span id="reviewSummary"></span><label><input type="checkbox" id="onlyIssues"> Nur auffällige zeigen</label><button class="link" id="clearList">Liste leeren</button></div>
-      <div class="review" id="reviewRows"></div>
-      <details class="removed" id="removedBox" hidden><summary id="removedSum"></summary><ul id="removedList"></ul></details>
-      <p class="small muted" style="margin:0" id="reviewNote"></p>
-    </div>
-    <div><button class="btn primary" id="doImport" disabled>Importieren</button></div>
-    <details class="ai-setup" id="aiSetup">
-      <summary><strong>KI-Einstellungen (Gemini)</strong></summary>
-      <div class="panel">
-        <p class="small">Mit einem kostenlosen Gemini-API-Schlüssel liest die KI deine Fotos, ordnet verrutschte Zeilen richtig zu, korrigiert Fehler und wirft Seitenzahlen, Uhrzeiten und Überschriften raus.</p>
-        <p class="small">So bekommst du einen Schlüssel: Öffne <a class="link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, melde dich mit einem Google-Konto an, tippe auf „API-Schlüssel erstellen“ und kopiere ihn hierher.</p>
+
+    <div class="group">
+      <h2>Prüfen und importieren</h2>
+      <div class="row">
         <div class="field">
-          <label class="lbl" for="aiKey">API-Schlüssel</label>
-          <input type="password" id="aiKey" autocomplete="off" spellcheck="false" placeholder="AIza…">
+          <label class="lbl" for="langFront">Sprache Vorderseite</label>
+          <select id="langFront"><option value="en">Englisch</option><option value="fr">Französisch</option><option value="es">Spanisch</option><option value="la">Latein</option><option value="it">Italienisch</option><option value="de">Deutsch</option></select>
         </div>
         <div class="field">
-          <label class="lbl" for="aiModel">Modell (optional)</label>
-          <input type="text" id="aiModel" autocomplete="off" spellcheck="false" placeholder="gemini-flash-latest">
+          <label class="lbl" for="langBack">Sprache Rückseite</label>
+          <select id="langBack"><option value="de">Deutsch</option><option value="en">Englisch</option><option value="fr">Französisch</option><option value="es">Spanisch</option><option value="la">Latein</option><option value="it">Italienisch</option></select>
         </div>
-        <div class="row">
-          <button class="btn primary" id="aiSave">Speichern</button>
-          <button class="btn" id="aiTest">Testen</button>
-          <button class="btn danger" id="aiRemove">Schlüssel entfernen</button>
-        </div>
-        <p class="small" id="aiTestMsg" hidden></p>
-        <p class="small muted">Der Schlüssel bleibt nur auf diesem Gerät gespeichert. Fotos und Vokabeln, die du prüfen lässt, werden an Google geschickt.</p>
       </div>
-    </details>
+      <div><button class="btn" id="checkBtn" disabled>Vokabeln prüfen</button></div>
+      <p class="small check-msg" id="checkMsg" hidden></p>
+      <div class="review" id="review" hidden>
+        <div class="review-head"><span id="reviewSummary"></span><label><input type="checkbox" id="onlyIssues"> Nur auffällige</label><button class="link" id="clearList">Liste leeren</button></div>
+        <div class="review" id="reviewRows"></div>
+        <details class="removed" id="removedBox" hidden><summary id="removedSum"></summary><ul id="removedList"></ul></details>
+        <p class="small muted" id="reviewNote"></p>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label class="lbl" for="importTarget">Ziel</label>
+          <select id="importTarget"></select>
+        </div>
+        <div class="field" id="newDeckField">
+          <label class="lbl" for="importName">Name des neuen Stapels</label>
+          <input type="text" id="importName" placeholder="z. B. Englisch Unit 4">
+        </div>
+      </div>
+      <div class="import-bar">
+        <span class="preview" id="importPreview"></span>
+        <button class="btn primary" id="doImport" disabled>Importieren</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- EINSTELLUNGEN -->
+  <section class="panel" id="view-settings" hidden>
+    <div class="group">
+      <div class="group-head"><h2>KI-Erkennung mit Gemini</h2><span class="chip" id="aiChip">Aus</span></div>
+      <p class="small">Mit einem kostenlosen API-Schlüssel von Google liest die KI deine Fotos, ordnet verrutschte Zeilen richtig zu, korrigiert Fehler und wirft Seitenzahlen, Uhrzeiten und Überschriften raus.</p>
+      <ol class="steps small">
+        <li>Öffne <a class="link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> und melde dich mit deinem Google-Konto an.</li>
+        <li>Tippe auf „API-Schlüssel erstellen“ und kopiere den Schlüssel.</li>
+        <li>Füge ihn hier ein und tippe auf „Speichern und testen“.</li>
+      </ol>
+      <div class="field">
+        <label class="lbl" for="aiKey">API-Schlüssel</label>
+        <div class="key-row">
+          <input type="password" id="aiKey" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="AIza…">
+          <button class="btn icon" id="aiShow" aria-label="Schlüssel anzeigen" aria-pressed="false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <details class="adv">
+        <summary>Erweitert</summary>
+        <div class="field">
+          <label class="lbl" for="aiModel">Modell (leer lassen für automatisch)</label>
+          <input type="text" id="aiModel" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="gemini-flash-latest">
+        </div>
+      </details>
+      <div class="row">
+        <button class="btn primary" id="aiTest">Speichern und testen</button>
+        <button class="btn danger" id="aiRemove">Schlüssel entfernen</button>
+      </div>
+      <p class="msg" id="aiTestMsg" hidden></p>
+      <p class="small muted">Der Schlüssel bleibt nur auf diesem Gerät. Fotos und Vokabeln, die du prüfen lässt, werden an Google geschickt.</p>
+    </div>
+
+    <div class="group">
+      <h2>Darstellung</h2>
+      <div class="seg" id="themeSeg" role="group" aria-label="Darstellung">
+        <button data-theme-val="system" aria-pressed="true">Automatisch</button>
+        <button data-theme-val="light" aria-pressed="false">Hell</button>
+        <button data-theme-val="dark" aria-pressed="false">Dunkel</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deine Daten</h2>
+      <p class="small muted">Stapel und Lernstand sind nur auf diesem Gerät gespeichert. Zum Sichern oder Übertragen öffne „Karten“ und exportiere den Stapel als Text.</p>
+    </div>
   </section>
 </div>
+
+<nav class="tabs dock" id="dock" role="tablist" aria-label="Bereiche">
+  <span class="lens" aria-hidden="true"></span>
+  <button role="tab" id="tab-learn" data-tab="learn" aria-selected="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="11" rx="2"/><path d="M7 4h11a3 3 0 0 1 3 3v8"/><path d="M7 12.5h6"/></svg>
+    Lernen</button>
+  <button role="tab" id="tab-cards" data-tab="cards" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></svg>
+    Karten</button>
+  <button role="tab" id="tab-import" data-tab="import" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
+    Import</button>
+  <button role="tab" id="tab-settings" data-tab="settings" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+    Einstellungen</button>
+</nav>
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -471,12 +630,24 @@ details summary { cursor: pointer; font-weight: 700; }
   }
 
   /* ---------- tabs ---------- */
+  const TABS = ['learn', 'cards', 'import', 'settings'];
+  const TITLES = {
+    learn: ['Lernen', 'Karten umdrehen und mit 5 Fächern wiederholen.'],
+    cards: ['Karten', 'Karten im gewählten Stapel bearbeiten.'],
+    import: ['Import', 'Vokabeln aus Fotos, Dateien oder Text übernehmen.'],
+    settings: ['Einstellungen', 'KI, Darstellung und deine Daten.']
+  };
   function setTab(t) {
+    if (!TABS.includes(t)) t = 'learn';
     tab = t;
-    document.querySelectorAll('nav.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
-    $('view-learn').hidden = t !== 'learn';
-    $('view-cards').hidden = t !== 'cards';
-    $('view-import').hidden = t !== 'import';
+    document.querySelectorAll('#dock button[data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+    $('dock').style.setProperty('--i', TABS.indexOf(t));
+    TABS.forEach((x) => { $('view-' + x).hidden = x !== t; });
+    $('pageTitle').textContent = TITLES[t][0];
+    $('pageSub').textContent = TITLES[t][1];
+    $('deckPill').hidden = t === 'settings';
+    $('pageSub').hidden = false;
+    window.scrollTo({ top: 0 });
     render();
   }
 
@@ -546,10 +717,11 @@ details summary { cursor: pointer; font-weight: 700; }
       return;
     }
     if (session && session.deckId !== d.id) session = null;
+    $('pageSub').hidden = !!session;
 
     if (!session) {
       area.innerHTML = `
-        <div class="panel">
+        <div class="panel group">
           <div class="row">
             <div class="field">
               <label class="lbl" for="dirSel">Abfragerichtung</label>
@@ -682,7 +854,22 @@ details summary { cursor: pointer; font-weight: 700; }
   }
 
   /* ---------- events ---------- */
-  document.querySelector('nav.tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) setTab(b.dataset.tab); });
+  $('dock').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) setTab(b.dataset.tab); });
+  document.addEventListener('click', (e) => { const g = e.target.closest('[data-go]'); if (g && !$('learnArea').contains(g)) setTab(g.dataset.go); });
+  const THEME_KEY = 'vokabel-theme';
+  function applyTheme(v) {
+    if (v === 'light' || v === 'dark') document.documentElement.setAttribute('data-theme', v);
+    else { document.documentElement.removeAttribute('data-theme'); v = 'system'; }
+    document.querySelectorAll('#themeSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themeVal === v)));
+  }
+  let savedTheme = 'system';
+  try { savedTheme = localStorage.getItem(THEME_KEY) || 'system'; } catch (e) {}
+  applyTheme(savedTheme);
+  $('themeSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-theme-val]'); if (!b) return;
+    applyTheme(b.dataset.themeVal);
+    try { localStorage.setItem(THEME_KEY, b.dataset.themeVal); } catch (er) {}
+  });
   $('deckSelect').addEventListener('change', (e) => { state.current = e.target.value; session = null; save(); render(); });
 
   $('learnArea').addEventListener('click', (e) => {
@@ -1145,14 +1332,22 @@ Regeln:
   }
   function updateAiState() {
     const el = $('aiState');
-    el.textContent = aiOn() ? 'KI aktiv: Gemini liest das Foto, sortiert, korrigiert und filtert die Vokabeln.' : 'Ohne KI: Texterkennung auf dem Gerät. Bessere Ergebnisse bekommst du mit der KI (Einstellungen ganz unten).';
-    el.className = 'small ai-state' + (aiOn() ? ' on' : '');
+    el.innerHTML = '<span class="dot"></span>' + (aiOn() ? 'KI aktiv: Gemini liest, sortiert und korrigiert.' : 'Ohne KI: Texterkennung auf dem Gerät.');
+    el.className = 'ai-state' + (aiOn() ? ' on' : '');
+    $('aiSetupLink').textContent = aiOn() ? 'KI-Einstellungen' : 'KI einrichten';
+    $('aiChip').textContent = aiOn() ? 'Aktiv' : 'Aus';
+    $('aiChip').className = 'chip ' + (aiOn() ? 'ok' : 'wait');
     $('ocrLang').closest('.field').querySelector('label').textContent = aiOn() ? 'Sprache der Vokabeln' : 'Sprachen auf dem Foto';
     if (!checking) $('checkBtn').textContent = checkLabel(!!review);
     $('aiKey').value = ai.key || ''; $('aiModel').value = ai.model || '';
   }
   function saveAi() { try { localStorage.setItem(AI_STORE, JSON.stringify(ai)); } catch (e) {} updateAiState(); }
-  $('aiSave').addEventListener('click', () => { ai = { key: $('aiKey').value.trim(), model: $('aiModel').value.trim() }; saveAi(); toast(aiOn() ? 'KI-Einstellungen gespeichert' : 'Kein Schlüssel eingetragen'); });
+  $('aiShow').addEventListener('click', () => {
+    const k = $('aiKey'), show = k.type === 'password';
+    k.type = show ? 'text' : 'password';
+    $('aiShow').setAttribute('aria-pressed', String(show));
+    $('aiShow').setAttribute('aria-label', show ? 'Schlüssel verbergen' : 'Schlüssel anzeigen');
+  });
   $('aiRemove').addEventListener('click', () => { ai = {}; saveAi(); $('aiTestMsg').hidden = true; toast('Schlüssel entfernt'); });
   $('aiTest').addEventListener('click', async () => {
     ai = { key: $('aiKey').value.trim(), model: $('aiModel').value.trim() }; saveAi();

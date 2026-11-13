@@ -15,3 +15,7 @@ Läuft als Web-App (PWA): zum Home-Bildschirm hinzufügen, dann startet sie im V
 - **Android (Chrome):** Menü ⋮ → „App installieren" bzw. „Zum Startbildschirm hinzufügen"
 
 Die Vokabeln werden auf dem Gerät gespeichert (localStorage).
+
+## KI (optional)
+
+Unter **Einstellungen** einen kostenlosen Gemini-API-Schlüssel von https://aistudio.google.com/apikey eintragen. Dann liest Gemini die Fotos, ordnet Zeilen zu, korrigiert Fehler und entfernt Nicht-Vokabeln.
