@@ -175,6 +175,7 @@ kbd { font-family: ui-monospace, monospace; font-size: .72em; border: 1px solid 
 
 /* segmented control */
 .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 999px; background: var(--field); border: 1px solid var(--field-border); }
+.seg.two { grid-template-columns: repeat(2, 1fr); }
 .seg button { font: inherit; font-weight: 600; font-size: .92rem; border: 0; background: transparent; color: var(--muted); padding: 9px 8px; border-radius: 999px; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--glass-strong); color: var(--ink); box-shadow: inset 0 1px 0 var(--hl), 0 2px 8px var(--shadow-c); }
 
@@ -503,6 +504,14 @@ details summary { cursor: pointer; font-weight: 650; }
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
+      </div>
+      <div class="field">
+        <span class="lbl" id="aiModeLbl">Modus</span>
+        <div class="seg two" id="aiModeSeg" role="group" aria-labelledby="aiModeLbl">
+          <button data-mode="fast" aria-pressed="true">Schnell</button>
+          <button data-mode="exact" aria-pressed="false">Genau</button>
+        </div>
+        <p class="small muted">Schnell braucht meist nur wenige Sekunden pro Foto. Genau ist bei schwierigen Fotos besser, dauert aber länger.</p>
       </div>
       <details class="adv">
         <summary>Erweitert</summary>
@@ -1266,11 +1275,12 @@ Antworte nur mit JSON in diesem Format: {"pairs":[{"front":"…","back":"…","c
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   function aiErr(msg, kind, detail) { const e = new Error(msg); e.kind = kind; e.detail = detail || ''; return e; }
   // kind: 'fatal' (abbrechen), 'next' (anderes Modell), 'retry' (nochmal versuchen), 'noschema' (ohne Schema nochmal)
-  async function geminiOnce(model, parts, useSchema) {
+  async function geminiOnce(model, parts, o) {
     const gen = { temperature: 0.1, responseMimeType: 'application/json' };
-    if (useSchema) gen.responseSchema = AI_SCHEMA;
+    if (o.schema) gen.responseSchema = AI_SCHEMA;
+    if (o.thinking) gen.thinkingConfig = { thinkingLevel: /lite/.test(model) ? 'minimal' : 'low' };
     const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timer = ctrl ? setTimeout(() => ctrl.abort(), 120000) : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 90000) : null;
     let res;
     try {
       res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(ai.key.trim())}`, {
@@ -1291,8 +1301,7 @@ Antworte nur mit JSON in diesem Format: {"pairs":[{"front":"…","back":"…","c
       if (res.status === 429) throw aiErr('Das kostenlose KI-Limit ist gerade erreicht. Warte eine Minute und versuch es nochmal.', 'retry', detail);
       if (res.status === 403) throw aiErr('Der API-Schlüssel hat keinen Zugriff auf Gemini.', 'fatal', detail);
       if (res.status >= 500) throw aiErr('Gemini ist gerade überlastet.', 'retry', detail);
-      if (res.status === 400 && useSchema) throw aiErr('Die KI hat die Anfrage abgelehnt.', 'noschema', detail);
-      if (res.status === 400) throw aiErr('Die KI hat die Anfrage abgelehnt.', 'next', detail);
+      if (res.status === 400) throw aiErr('Die KI hat die Anfrage abgelehnt.', 'badreq', detail);
       throw aiErr('Die KI hat einen Fehler gemeldet.', 'retry', detail);
     }
     const block = j && j.promptFeedback && j.promptFeedback.blockReason;
@@ -1313,18 +1322,27 @@ Antworte nur mit JSON in diesem Format: {"pairs":[{"front":"…","back":"…","c
       throw aiErr(reason === 'MAX_TOKENS' ? 'Die Liste war zu lang für eine Antwort. Fotografiere weniger auf einmal.' : 'Die Antwort der KI war unvollständig.', 'retry', reason || 'JSON');
     }
   }
+  const AI_FAST = ['gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-flash-latest', 'gemini-3.6-flash'];
+  const AI_EXACT = ['gemini-flash-latest', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-lite-latest'];
+  const modelOpts = new Map(), badModels = new Set();
   async function gemini(parts) {
-    const models = ai.model && ai.model.trim() ? [ai.model.trim()] : AI_MODELS;
+    const custom = ai.model && ai.model.trim();
+    const models = custom ? [custom] : (ai.mode === 'exact' ? AI_EXACT : AI_FAST).filter((m) => !badModels.has(m));
     let last = null;
     for (const m of models) {
-      let useSchema = true;
-      for (let attempt = 0, tries = 0; attempt < 3 && tries < 2; attempt++) {
-        try { return await geminiOnce(m, parts, useSchema); }
+      let o = modelOpts.get(m) || { schema: true, thinking: true };
+      for (let step = 0, tries = 0; step < 5 && tries < 2; step++) {
+        try { const r = await geminiOnce(m, parts, o); modelOpts.set(m, o); return r; }
         catch (e) {
           last = e;
           if (e.kind === 'fatal') throw withDetail(e);
-          if (e.kind === 'next') break;
-          if (e.kind === 'noschema') { useSchema = false; continue; }
+          if (e.kind === 'next') { if (!custom) badModels.add(m); break; }
+          if (e.kind === 'badreq') {
+            if (o.thinking) { o = { ...o, thinking: false }; continue; }
+            if (o.schema) { o = { ...o, schema: false }; continue; }
+            if (!custom) badModels.add(m);
+            break;
+          }
           tries++;
           if (tries < 2) await sleep(2000);
         }
@@ -1346,8 +1364,8 @@ Antworte nur mit JSON in diesem Format: {"pairs":[{"front":"…","back":"…","c
   }
   async function imagePart(file) {
     try {
-      const canvas = await prepImage(file, 1600, false);
-      return { inlineData: { mimeType: 'image/jpeg', data: canvas.toDataURL('image/jpeg', 0.85).split(',')[1] } };
+      const canvas = await prepImage(file, 1400, false);
+      return { inlineData: { mimeType: 'image/jpeg', data: canvas.toDataURL('image/jpeg', 0.8).split(',')[1] } };
     } catch (e) {
       // z. B. HEIC-Fotos, die der Browser nicht öffnen kann: Original direkt an Gemini schicken
       const type = (file.type || '').toLowerCase() || (/\.hei[cf]$/i.test(file.name) ? 'image/heic' : '');
@@ -1400,6 +1418,7 @@ Antworte nur mit JSON in diesem Format: {"pairs":[{"front":"…","back":"…","c
     $('ocrLang').closest('.field').querySelector('label').textContent = aiOn() ? 'Sprache der Vokabeln' : 'Sprachen auf dem Foto';
     if (!checking) $('checkBtn').textContent = checkLabel(!!review);
     $('aiKey').value = ai.key || ''; $('aiModel').value = ai.model || '';
+    document.querySelectorAll('#aiModeSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === (ai.mode === 'exact' ? 'exact' : 'fast'))));
   }
   function saveAi() { try { localStorage.setItem(AI_STORE, JSON.stringify(ai)); } catch (e) {} updateAiState(); }
   $('aiShow').addEventListener('click', () => {
@@ -1408,9 +1427,15 @@ Antworte nur mit JSON in diesem Format: {"pairs":[{"front":"…","back":"…","c
     $('aiShow').setAttribute('aria-pressed', String(show));
     $('aiShow').setAttribute('aria-label', show ? 'Schlüssel verbergen' : 'Schlüssel anzeigen');
   });
-  $('aiRemove').addEventListener('click', () => { ai = {}; saveAi(); $('aiTestMsg').hidden = true; toast('Schlüssel entfernt'); });
+  $('aiModeSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-mode]'); if (!b) return;
+    ai = { ...ai, mode: b.dataset.mode }; saveAi();
+    toast(b.dataset.mode === 'exact' ? 'Modus: Genau' : 'Modus: Schnell');
+  });
+  $('aiRemove').addEventListener('click', () => { ai = { mode: ai.mode }; saveAi(); $('aiTestMsg').hidden = true; toast('Schlüssel entfernt'); });
   $('aiTest').addEventListener('click', async () => {
-    ai = { key: $('aiKey').value.trim(), model: $('aiModel').value.trim() }; saveAi();
+    ai = { ...ai, key: $('aiKey').value.trim(), model: $('aiModel').value.trim() }; saveAi();
+    modelOpts.clear(); badModels.clear();
     const m = $('aiTestMsg'); m.hidden = false; m.style.color = '';
     if (!aiOn()) { m.textContent = 'Trag zuerst einen API-Schlüssel ein.'; m.style.color = 'var(--bad)'; return; }
     m.textContent = 'Teste …';
@@ -1502,19 +1527,39 @@ Antworte nur mit JSON in diesem Format: {"pairs":[{"front":"…","back":"…","c
     const useAi = aiOn();
     try {
       if (useAi) {
-        for (let i = 0; i < N; i++) {
-          mark(i, 'busy', 'liest …');
-          setP(N > 1 ? `Die KI liest Foto ${i + 1} von ${N} …` : 'Die KI liest das Foto … (dauert ein paar Sekunden)', (i + 0.4) / N);
-          try {
-            const n = applyAi(await gemini([{ text: aiPrompt('image') }, await imagePart(files[i])]), true);
+        const results = new Array(N);
+        let next = 0, flushed = 0, done = 0, stop = false;
+        const t0 = Date.now();
+        const status = () => setP(`Die KI liest ${N > 1 ? N + ' Fotos' : 'das Foto'} … ${N > 1 ? done + ' von ' + N + ' fertig · ' : ''}${Math.round((Date.now() - t0) / 1000)} s`, (done + 0.35) / N);
+        status();
+        const tick = setInterval(status, 1000);
+        const flush = () => {
+          while (flushed < N && results[flushed]) {
+            const i = flushed++, r = results[i];
+            if (!r.ok) continue;
+            const n = applyAi(r.res, true);
             total += n;
             mark(i, n ? 'ok' : 'bad', n ? `${n} neu` : 'nichts Neues');
-          } catch (err) {
-            const msg = err.message === 'img' ? 'Bild konnte nicht geöffnet werden' : err.message;
-            fails.push(`Foto ${i + 1}: ${msg}`); mark(i, 'bad', 'Fehler');
-            if (err.kind === 'fatal' || /Schlüssel|Limit|Modell|erreichbar/.test(msg)) { for (let j = i + 1; j < N; j++) mark(j, 'bad', 'übersprungen'); break; }
           }
-        }
+        };
+        const work = async () => {
+          while (next < N && !stop) {
+            const i = next++;
+            mark(i, 'busy', 'liest …');
+            try { results[i] = { ok: true, res: await gemini([{ text: aiPrompt('image') }, await imagePart(files[i])]) }; }
+            catch (err) {
+              results[i] = { ok: false };
+              fails.push(`Foto ${i + 1}: ${err.message === 'img' ? 'Bild konnte nicht geöffnet werden' : err.message}`);
+              mark(i, 'bad', 'Fehler');
+              if (err.kind === 'fatal') stop = true;
+            }
+            done++; status(); flush();
+          }
+        };
+        try { await Promise.all(Array.from({ length: Math.min(3, N) }, work)); }
+        finally { clearInterval(tick); }
+        for (let j = 0; j < N; j++) if (!results[j]) mark(j, 'bad', 'übersprungen');
+        fails.sort((x, y) => parseInt(x.slice(5), 10) - parseInt(y.slice(5), 10));
       } else {
         let worker = null, cur = 0;
         try {
