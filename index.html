@@ -3,7 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<style>body{margin:0}[hidden]{display:none!important}</style>
+<meta name="theme-color" content="#dde4ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141a22" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vokabeln">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+html{background:#dde4ec;-webkit-text-size-adjust:100%}
+@media (prefers-color-scheme: dark){html{background:#141a22}}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+.card,nav.tabs button,.btn{-webkit-user-select:none;user-select:none;touch-action:manipulation}
+[hidden]{display:none!important}
+</style>
 <title>Vokabel-Karteikasten</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -175,6 +191,7 @@ details summary { cursor: pointer; font-weight: 700; }
   .box .t { font-size: .64rem; letter-spacing: .02em; }
   .box .n { font-size: 1.15rem; }
 }
+@media (hover: none) { kbd { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   .card-inner, .progress .track i { transition: none; }
 }
@@ -362,7 +379,7 @@ details summary { cursor: pointer; font-weight: 700; }
     const counts = [0, 0, 0, 0, 0];
     if (d) d.cards.forEach((c) => counts[Math.min(5, Math.max(1, c.box)) - 1]++);
     const total = d ? d.cards.length : 0;
-    const names = ['Neu / falsch', 'Fach 2', 'Fach 3', 'Fach 4', 'Sitzt'];
+    const names = ['Fach 1', 'Fach 2', 'Fach 3', 'Fach 4', 'Sitzt'];
     $('boxes').innerHTML = counts.map((n, i) => `
       <div class="box" title="Fach ${i + 1}: ${n} Karten">
         <span class="t">${names[i]}</span>
@@ -474,7 +491,7 @@ details summary { cursor: pointer; font-weight: 700; }
             <div class="face front">
               <div class="meta"><span>${item.rev ? 'Rückseite' : 'Vorderseite'}</span><span>Fach ${c.box}${item.tries ? ' · Wiederholung' : ''}</span></div>
               <div class="word">${esc(q)}</div>
-              <div class="hint">Antippen oder <kbd>Leertaste</kbd> zum Umdrehen</div>
+              <div class="hint">Antippen zum Umdrehen<kbd style="margin-left:6px">Leertaste</kbd></div>
             </div>
             <div class="face back">
               <div class="meta"><span>${esc(q)}</span><span>Lösung</span></div>
@@ -636,6 +653,11 @@ details summary { cursor: pointer; font-weight: 700; }
 
   render();
 })();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+}
 </script>
 </body>
 </html>
