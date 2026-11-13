@@ -244,6 +244,43 @@ kbd { font-family: ui-monospace, monospace; font-size: .72em; border: 1px solid 
 .answer { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 600px; }
 .answer .btn { flex: 1 1 140px; padding: 14px 12px; }
 
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-btn {
+  font: inherit; font-weight: 600; font-size: .9rem; color: var(--ink); background: var(--field); border: 1px solid var(--field-border);
+  border-radius: 999px; padding: 8px 13px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; max-width: 100%; text-align: left;
+}
+.chip-btn span { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.chip-btn[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 16%, var(--glass-strong)); border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: inset 0 1px 0 var(--hl); }
+.chip-btn[aria-pressed="true"]::before { content: "✓"; color: var(--accent); font-weight: 800; }
+.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mode-btn {
+  font: inherit; color: var(--ink); text-align: left; display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  padding: 12px; border-radius: var(--r-md); border: 1px solid var(--field-border); background: var(--field); cursor: pointer;
+}
+.mode-btn svg { width: 24px; height: 24px; color: var(--muted); margin-bottom: 4px; }
+.mode-btn strong { font-size: .95rem; }
+.mode-btn span { font-size: .78rem; color: var(--muted); line-height: 1.3; }
+.mode-btn[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 60%, transparent); background: color-mix(in srgb, var(--accent) 14%, var(--glass-strong)); box-shadow: inset 0 1px 0 var(--hl), 0 4px 14px var(--shadow-c); }
+.mode-btn[aria-pressed="true"] svg { color: var(--accent); }
+.card.static { cursor: default; aspect-ratio: 2 / 1; }
+.card.static .face { padding-bottom: 10px; }
+.write { width: 100%; max-width: 600px; display: flex; gap: 10px; }
+.write input { flex: 1; font-size: 1.1rem; padding: 13px 16px; border-radius: 999px; }
+.write input:disabled { opacity: .8; }
+.result { width: 100%; max-width: 600px; border-radius: var(--r-md); padding: 12px 16px; font-weight: 700; background: var(--field); border: 1px solid currentColor; display: flex; flex-direction: column; gap: 2px; }
+.result.right { color: var(--good); } .result.close { color: var(--warn); } .result.wrong { color: var(--bad); }
+.result .you { font-weight: 500; color: var(--ink); font-size: .95rem; }
+.match { width: 100%; max-width: 600px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mcol { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.tile {
+  font: inherit; font-family: var(--f-hand); font-size: 1.15rem; line-height: 1.25; min-height: 58px; padding: 10px 12px;
+  border-radius: var(--r-md); border: 2px solid transparent; background: var(--paper); color: var(--ink); box-shadow: var(--card-shadow);
+  cursor: pointer; overflow-wrap: anywhere; transition: transform .15s ease, opacity .35s ease, border-color .15s ease;
+}
+.tile.sel { border-color: var(--accent); transform: translateY(-2px); }
+.tile.done { opacity: 0; pointer-events: none; transform: scale(.92); }
+.tile.wrong { border-color: var(--bad); animation: shake .35s; }
+@keyframes shake { 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
 .summary { border-radius: var(--r-lg); padding: 22px; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 600px; }
 .summary .big { font-weight: 800; font-size: 2.4rem; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .empty { border-radius: var(--r-lg); padding: 22px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
@@ -324,6 +361,9 @@ details summary { cursor: pointer; font-weight: 650; }
 }
 @media (max-width: 520px) {
   h1 { font-size: 1.85rem; }
+  .mode-btn { padding: 10px 8px; align-items: center; text-align: center; }
+  .mode-btn span { display: none; }
+  .tile { font-size: 1.02rem; min-height: 54px; padding: 8px 10px; }
   .box { padding: 8px 6px 10px; }
   .box .t { font-size: .64rem; }
   .box .n { font-size: 1.2rem; }
@@ -333,7 +373,8 @@ details summary { cursor: pointer; font-weight: 650; }
 @media (hover: none) { kbd { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   body::before { animation: none; }
-  .card-inner, .progress .track i, .dock .lens, .btn { transition: none; }
+  .card-inner, .progress .track i, .dock .lens, .btn, .tile { transition: none; }
+  .tile.wrong { animation: none; }
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass, .group, .boxes, .summary, .empty, .dock, .deck-pill, .toast, .confirm { background: var(--glass-strong); }
@@ -540,7 +581,7 @@ details summary { cursor: pointer; font-weight: 650; }
     <div class="group">
       <h2>Deine Daten</h2>
       <p class="small muted">Stapel und Lernstand sind nur auf diesem Gerät gespeichert. Zum Sichern oder Übertragen öffne „Karten“ und exportiere den Stapel als Text.</p>
-      <p class="small muted">App-Version 9</p>
+      <p class="small muted">App-Version 10</p>
     </div>
   </section>
 </div>
@@ -642,7 +683,7 @@ details summary { cursor: pointer; font-weight: 650; }
   /* ---------- tabs ---------- */
   const TABS = ['learn', 'cards', 'import', 'settings'];
   const TITLES = {
-    learn: ['Lernen', 'Karten umdrehen und mit 5 Fächern wiederholen.'],
+    learn: ['Lernen', 'Wähle Stapel und Modus, dann leg los.'],
     cards: ['Karten', 'Karten im gewählten Stapel bearbeiten.'],
     import: ['Import', 'Vokabeln aus Fotos, Dateien oder Text übernehmen.'],
     settings: ['Einstellungen', 'KI, Darstellung und deine Daten.']
@@ -655,18 +696,30 @@ details summary { cursor: pointer; font-weight: 650; }
     TABS.forEach((x) => { $('view-' + x).hidden = x !== t; });
     $('pageTitle').textContent = TITLES[t][0];
     $('pageSub').textContent = TITLES[t][1];
-    $('deckPill').hidden = t === 'settings';
+    $('deckPill').hidden = t === 'settings' || t === 'learn';
     $('pageSub').hidden = false;
     window.scrollTo({ top: 0 });
     render();
   }
 
   /* ---------- learn ---------- */
+  const MODES = {
+    cards: ['Karteikarten', 'Umdrehen und selbst bewerten', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="11" rx="2"/><path d="M7 4h11a3 3 0 0 1 3 3v8"/></svg>'],
+    write: ['Schreiben', 'Antwort selbst eintippen', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>'],
+    match: ['Zuordnen', 'Wort und Übersetzung als Paar finden', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M10 7h3a2 2 0 0 1 2 2v5"/></svg>']
+  };
+  function learnDecks() {
+    let ids = Array.isArray(state.learnDecks) ? state.learnDecks.filter((id) => state.decks.some((d) => d.id === id)) : [];
+    if (!ids.length && state.current) ids = [state.current];
+    return state.decks.filter((d) => ids.includes(d.id));
+  }
+  function findCard(id) { for (const d of state.decks) { const c = d.cards.find((x) => x.id === id); if (c) return c; } return null; }
+
   function renderBoxes() {
-    const d = deck();
+    const cards = learnDecks().flatMap((d) => d.cards);
     const counts = [0, 0, 0, 0, 0];
-    if (d) d.cards.forEach((c) => counts[Math.min(5, Math.max(1, c.box)) - 1]++);
-    const total = d ? d.cards.length : 0;
+    cards.forEach((c) => counts[Math.min(5, Math.max(1, c.box)) - 1]++);
+    const total = cards.length;
     const names = ['Fach 1', 'Fach 2', 'Fach 3', 'Fach 4', 'Sitzt'];
     $('boxes').innerHTML = counts.map((n, i) => `
       <div class="box" title="Fach ${i + 1}: ${n} Karten">
@@ -679,116 +732,247 @@ details summary { cursor: pointer; font-weight: 650; }
   function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
   function startSession() {
-    const d = deck(); if (!d || !d.cards.length) return;
-    const cards = shuffle([...d.cards]).sort((a, b) => a.box - b.box);
-    const n = state.size === 'all' ? cards.length : Math.min(+state.size, cards.length);
+    const all = learnDecks().flatMap((d) => d.cards);
+    if (!all.length) return;
+    const mode = MODES[state.mode] ? state.mode : 'cards';
+    const cards = shuffle([...all]).sort((a, b) => a.box - b.box);
+    const n = state.size === 'all' ? cards.length : Math.min(+state.size || 20, cards.length);
+    const rev = () => state.dir === 'ba' || (state.dir === 'mix' && mode !== 'match' && Math.random() < .5);
     session = {
-      deckId: d.id,
-      queue: cards.slice(0, n).map((c) => ({ id: c.id, rev: state.dir === 'ba' || (state.dir === 'mix' && Math.random() < .5), tries: 0 })),
-      pos: 0, flipped: false, total: n, firstTry: 0, mistakes: 0
+      mode, queue: shuffle(cards.slice(0, n)).map((c) => ({ id: c.id, rev: rev(), tries: 0 })),
+      pos: 0, flipped: false, total: n, firstTry: 0, mistakes: 0, checked: null, match: null
     };
+    if (mode === 'match') nextMatchBatch();
     renderLearn();
-    const c = document.querySelector('.card'); if (c) c.focus();
+    focusLearn();
+  }
+  function focusLearn() {
+    const el = session && session.mode === 'write' ? $('writeInput') : document.querySelector('.card');
+    if (el && !el.disabled) el.focus({ preventScroll: true });
+  }
+  function grade(item, known) {
+    const c = findCard(item.id); if (!c) return;
+    if (known) { c.box = Math.min(5, c.box + 1); c.right++; if (item.tries === 0) session.firstTry++; }
+    else { c.box = 1; c.wrong++; session.mistakes++; }
+    save();
+  }
+  function advance() {
+    session.pos++; session.flipped = false; session.checked = null;
+    renderBoxes(); renderLearn(); renderDeckSelect(); focusLearn();
   }
 
+  // Karteikarten
   function answer(known) {
-    if (!session || !session.flipped) return;
-    const d = deck(); const item = session.queue[session.pos];
-    const c = d && d.cards.find((x) => x.id === item.id);
-    if (c) {
-      if (known) { c.box = Math.min(5, c.box + 1); c.right++; if (item.tries === 0) session.firstTry++; }
-      else { c.box = 1; c.wrong++; session.mistakes++; session.queue.push({ id: item.id, rev: item.rev, tries: item.tries + 1 }); }
-      item.tries++;
-      save();
-    }
-    session.pos++; session.flipped = false;
-    renderBoxes(); renderLearn(); renderDeckSelect();
-    const card = document.querySelector('.card'); if (card) card.focus();
+    if (!session || session.mode !== 'cards' || !session.flipped) return;
+    const item = session.queue[session.pos];
+    grade(item, known);
+    if (!known) session.queue.push({ id: item.id, rev: item.rev, tries: item.tries + 1 });
+    item.tries++;
+    advance();
   }
-
   function flip() {
-    if (!session) return;
+    if (!session || session.mode !== 'cards') return;
     session.flipped = !session.flipped;
     const card = document.querySelector('.card');
     if (card) card.classList.toggle('flipped', session.flipped);
-    const ans = document.querySelector('.answer');
-    if (ans) ans.querySelectorAll('.btn').forEach((b) => { b.disabled = !session.flipped; });
+    document.querySelectorAll('.answer .btn').forEach((b) => { b.disabled = !session.flipped; });
+  }
+
+  // Schreiben
+  const ALL_ART = ['der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einen', 'sich', 'to', 'the', 'a', 'an', 'le', 'la', 'les', 'l', 'un', 'une', 'se', 's', 'el', 'los', 'las', 'il', 'lo', 'i', 'gli', 'uno'];
+  function nrm(s) {
+    const w = String(s).toLowerCase().replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/[.,;:!?"„“”«»'’`´\-–—\/…]/g, ' ').split(/\s+/).filter(Boolean);
+    while (w.length > 1 && ALL_ART.includes(w[0])) w.shift();
+    return w.join(' ');
+  }
+  function gradeText(typed, answerText) {
+    const t = nrm(typed); if (!t) return 'wrong';
+    const opts = String(answerText).split(/[,;\/]|\s+(?:oder|or|ou|o)\s+/i).map(nrm).filter(Boolean);
+    opts.push(nrm(answerText));
+    if (opts.includes(t)) return 'right';
+    const close = opts.some((o) => lev(o, t) <= (o.length >= 8 ? 2 : o.length >= 4 ? 1 : 0));
+    return close ? 'close' : 'wrong';
+  }
+  function checkWrite() {
+    if (!session || session.mode !== 'write' || session.checked) return;
+    const inp = $('writeInput'); const typed = inp ? inp.value.trim() : '';
+    if (!typed) { if (inp) inp.focus(); return; }
+    const item = session.queue[session.pos], c = findCard(item.id); if (!c) return advance();
+    session.checked = { res: gradeText(typed, item.rev ? c.front : c.back), typed };
+    renderLearn();
+    const nx = $('nextBtn'); if (nx) { nx.focus({ preventScroll: true }); nx.scrollIntoView({ block: 'center' }); }
+  }
+  function skipWrite() {
+    if (!session || session.mode !== 'write' || session.checked) return;
+    session.checked = { res: 'wrong', typed: '' };
+    renderLearn();
+    const nx = $('nextBtn'); if (nx) { nx.focus({ preventScroll: true }); nx.scrollIntoView({ block: 'center' }); }
+  }
+  function nextWrite(override) {
+    if (!session || !session.checked) return;
+    const item = session.queue[session.pos];
+    const ok = override || session.checked.res !== 'wrong';
+    grade(item, ok);
+    if (!ok) session.queue.push({ id: item.id, rev: item.rev, tries: item.tries + 1 });
+    item.tries++;
+    advance();
+  }
+
+  // Zuordnen
+  function nextMatchBatch() {
+    const batch = session.queue.slice(session.pos, session.pos + 6);
+    session.match = { batch, left: shuffle(batch.map((x) => x.id)), right: shuffle(batch.map((x) => x.id)), sel: null, done: new Set(), bad: new Set(), wrong: null };
+  }
+  function matchClick(side, id) {
+    const m = session.match; if (!m || m.done.has(id)) return;
+    if (!m.sel || m.sel.side === side) { m.sel = (m.sel && m.sel.side === side && m.sel.id === id) ? null : { side, id }; m.wrong = null; return renderLearn(); }
+    const other = m.sel; m.sel = null;
+    if (other.id === id) {
+      m.done.add(id);
+      grade(m.batch.find((x) => x.id === id), !m.bad.has(id));
+      session.pos++;
+      renderBoxes();
+      if (m.done.size === m.batch.length) {
+        renderLearn();
+        setTimeout(() => { if (session && session.match === m) { if (session.pos < session.queue.length) nextMatchBatch(); renderLearn(); } }, 450);
+        return;
+      }
+    } else {
+      m.bad.add(other.id); m.bad.add(id);
+      m.wrong = [other.side + other.id, side + id];
+      setTimeout(() => { if (session && session.match === m) { m.wrong = null; renderLearn(); } }, 600);
+    }
+    renderLearn();
+  }
+
+  function renderSetup(area) {
+    const sel = new Set(learnDecks().map((d) => d.id));
+    const n = learnDecks().reduce((s, d) => s + d.cards.length, 0);
+    const size = state.size === 'all' ? n : Math.min(+state.size || 20, n);
+    const mode = MODES[state.mode] ? state.mode : 'cards';
+    area.innerHTML = `
+      <div class="panel group">
+        <div class="field">
+          <div class="group-head"><span class="lbl">Stapel${state.decks.length > 1 ? ' (mehrere möglich)' : ''}</span>${state.decks.length > 1 ? `<button class="link small" id="allDecks">${sel.size === state.decks.length ? 'Nur aktueller' : 'Alle auswählen'}</button>` : ''}</div>
+          <div class="chips" id="deckChips">${state.decks.map((d) => `<button class="chip-btn" data-deck="${d.id}" aria-pressed="${sel.has(d.id)}">${esc(d.name)} <span>${d.cards.length}</span></button>`).join('')}</div>
+        </div>
+        <div class="field">
+          <span class="lbl">Modus</span>
+          <div class="modes" id="modeSel">${Object.entries(MODES).map(([k, v]) => `<button class="mode-btn" data-mode="${k}" aria-pressed="${mode === k}">${v[2]}<strong>${v[0]}</strong><span>${v[1]}</span></button>`).join('')}</div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label class="lbl" for="dirSel">Abfragerichtung</label>
+            <select id="dirSel">
+              <option value="ab">Vorderseite → Rückseite</option>
+              <option value="ba">Rückseite → Vorderseite</option>
+              <option value="mix">Gemischt</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="lbl" for="sizeSel">Karten pro Runde</label>
+            <select id="sizeSel">
+              <option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="all">Alle (${n})</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn primary" id="startBtn"${n ? '' : ' disabled'}>${n ? `Runde starten · ${size} ${size === 1 ? 'Karte' : 'Karten'}` : 'Keine Karten in der Auswahl'}</button>
+        <p class="muted small">Karten aus den unteren Fächern kommen zuerst. Gewusst: ein Fach weiter. Nicht gewusst: zurück in Fach 1.</p>
+      </div>`;
+    $('dirSel').value = state.dir || 'ab'; $('sizeSel').value = state.size || '20';
+  }
+
+  function cardHtml(item, c, opts) {
+    const q = item.rev ? c.back : c.front, a = item.rev ? c.front : c.back;
+    return `<div class="card${opts.flipped ? ' flipped' : ''}${opts.static ? ' static' : ''}"${opts.static ? '' : ' tabindex="0" role="button" aria-label="Karte umdrehen"'}>
+        <div class="card-inner">
+          <div class="face front">
+            <div class="meta"><span>${item.rev ? 'Rückseite' : 'Vorderseite'}</span><span>Fach ${c.box}${item.tries ? ' · Wiederholung' : ''}</span></div>
+            <div class="word">${esc(q)}</div>
+            <div class="hint">${opts.hint || ''}</div>
+          </div>
+          <div class="face back">
+            <div class="meta"><span>${esc(q)}</span><span>Lösung</span></div>
+            <div class="word">${esc(a)}</div>
+            <div class="hint">${opts.backHint || ''}</div>
+          </div>
+        </div>
+      </div>`;
   }
 
   function renderLearn() {
     const area = $('learnArea');
-    const d = deck();
-    if (!d) {
-      area.innerHTML = `<div class="empty"><h2>Noch keine Vokabeln</h2><p class="muted" style="margin:0">Füge deine erste Liste unter „Importieren“ ein.</p><button class="btn primary" data-go="import">Vokabeln importieren</button></div>`;
+    if (!state.decks.length || !state.decks.some((d) => d.cards.length)) {
+      session = null; $('pageSub').hidden = false; $('boxes').hidden = false;
+      area.innerHTML = `<div class="empty"><h2>Noch keine Vokabeln</h2><p class="muted">Füge deine erste Liste unter „Import“ ein.</p><button class="btn primary" data-go="import">Vokabeln importieren</button></div>`;
       return;
     }
-    if (!d.cards.length) {
-      area.innerHTML = `<div class="empty"><h2>Dieser Stapel ist leer</h2><p class="muted" style="margin:0">Importiere eine Liste oder lege unter „Karten“ einzelne Karten an.</p><button class="btn primary" data-go="import">Vokabeln importieren</button></div>`;
-      return;
-    }
-    if (session && session.deckId !== d.id) session = null;
     $('pageSub').hidden = !!session;
+    $('boxes').hidden = !!session && session.pos < session.queue.length;
+    if (!session) return renderSetup(area);
 
-    if (!session) {
-      area.innerHTML = `
-        <div class="panel group">
-          <div class="row">
-            <div class="field">
-              <label class="lbl" for="dirSel">Abfragerichtung</label>
-              <select id="dirSel">
-                <option value="ab">Vorderseite → Rückseite</option>
-                <option value="ba">Rückseite → Vorderseite</option>
-                <option value="mix">Gemischt</option>
-              </select>
-            </div>
-            <div class="field">
-              <label class="lbl" for="sizeSel">Karten pro Runde</label>
-              <select id="sizeSel">
-                <option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="all">Alle (${d.cards.length})</option>
-              </select>
-            </div>
-            <button class="btn primary" id="startBtn">Runde starten</button>
-          </div>
-          <p class="muted small" style="margin:0">Karten aus den unteren Fächern kommen zuerst. Gewusst: ein Fach weiter. Nicht gewusst: zurück in Fach 1 und später in der Runde nochmal.</p>
-        </div>`;
-      $('dirSel').value = state.dir; $('sizeSel').value = state.size;
-      return;
-    }
-
-    if (session.pos >= session.queue.length) {
+    const done = Math.min(session.pos, session.queue.length), all = session.queue.length;
+    if (session.pos >= all) {
       const pct = session.total ? Math.round(session.firstTry / session.total * 100) : 0;
       area.innerHTML = `
         <div class="stage"><div class="summary">
-          <span class="lbl">Runde geschafft</span>
+          <span class="lbl">${MODES[session.mode][0]}: Runde geschafft</span>
           <span class="big">${session.firstTry} / ${session.total}</span>
-          <span>beim ersten Versuch gewusst (${pct} %). ${session.mistakes ? `${session.mistakes}× nachgelernt.` : 'Keine Fehler.'}</span>
+          <span>${session.mode === 'match' ? 'ohne Fehler zugeordnet' : 'beim ersten Versuch gewusst'} (${pct} %). ${session.mistakes ? `${session.mistakes} ${session.mistakes === 1 ? 'Fehler' : 'Fehler'}.` : 'Keine Fehler.'}</span>
           <div class="row"><button class="btn primary" id="startBtn">Nächste Runde</button><button class="btn ghost" id="endBtn">Zur Übersicht</button></div>
         </div></div>`;
       return;
     }
+    const progress = `<div class="progress"><span class="small muted">${done} / ${all}</span><span class="track"><i style="width:${Math.round(done / all * 100)}%"></i></span><button class="btn ghost small" id="endBtn" style="padding:6px 10px">Beenden</button></div>`;
+
+    if (session.mode === 'match') {
+      const m = session.match;
+      const tile = (side, id) => {
+        const it = m.batch.find((x) => x.id === id), c = findCard(id); if (!c) return '';
+        const text = side === 'l' ? (it.rev ? c.back : c.front) : (it.rev ? c.front : c.back);
+        const cls = ['tile', m.done.has(id) ? 'done' : '', m.sel && m.sel.side === side && m.sel.id === id ? 'sel' : '', m.wrong && m.wrong.includes(side + id) ? 'wrong' : ''].join(' ');
+        return `<button class="${cls}" data-side="${side}" data-id="${id}"${m.done.has(id) ? ' tabindex="-1" aria-hidden="true"' : ''}>${esc(text)}</button>`;
+      };
+      area.innerHTML = `
+        <div class="stage">
+          ${progress}
+          <div class="match"><div class="mcol">${m.left.map((id) => tile('l', id)).join('')}</div><div class="mcol">${m.right.map((id) => tile('r', id)).join('')}</div></div>
+          <p class="small muted">Tippe ein Wort und dann seine Übersetzung.</p>
+        </div>`;
+      return;
+    }
 
     const item = session.queue[session.pos];
-    const c = d.cards.find((x) => x.id === item.id);
+    const c = findCard(item.id);
     if (!c) { session.pos++; return renderLearn(); }
-    const q = item.rev ? c.back : c.front, a = item.rev ? c.front : c.back;
-    const done = session.pos, all = session.queue.length;
+
+    if (session.mode === 'write') {
+      const ch = session.checked;
+      const a = item.rev ? c.front : c.back;
+      let result = '';
+      if (ch) {
+        const msg = ch.res === 'right' ? 'Richtig!' : ch.res === 'close' ? 'Fast richtig, achte auf die Schreibweise.' : (ch.typed ? 'Leider falsch.' : 'Übersprungen.');
+        result = `<div class="result ${ch.res}"><span>${msg}</span>${ch.res !== 'right' ? `<span class="you">Richtig: <strong>${esc(a)}</strong>${ch.typed ? ` · Du: ${esc(ch.typed)}` : ''}</span>` : ''}</div>
+          <div class="answer">${ch.res === 'wrong' && ch.typed ? '<button class="btn" id="overrideBtn">Ich hatte recht</button>' : ''}<button class="btn primary" id="nextBtn">Weiter <kbd>Enter</kbd></button></div>`;
+      }
+      area.innerHTML = `
+        <div class="stage">
+          ${progress}
+          ${cardHtml(item, c, { flipped: !!ch, static: true, hint: 'Schreib die Übersetzung unten hin.' })}
+          <form class="write" id="writeForm" autocomplete="off">
+            <label class="sr" for="writeInput">Deine Antwort</label>
+            <input type="text" id="writeInput" placeholder="Deine Antwort" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"${ch ? ` disabled value="${esc(ch.typed)}"` : ''}>
+            ${ch ? '' : '<button class="btn primary" type="submit">Prüfen</button>'}
+          </form>
+          ${ch ? result : '<button class="link small" id="skipBtn">Weiß ich nicht</button>'}
+        </div>`;
+      return;
+    }
+
     area.innerHTML = `
       <div class="stage">
-        <div class="progress"><span class="small muted">${done} / ${all}</span><span class="track"><i style="width:${Math.round(done / all * 100)}%"></i></span><button class="btn ghost small" id="endBtn" style="padding:6px 10px">Beenden</button></div>
-        <div class="card${session.flipped ? ' flipped' : ''}" tabindex="0" role="button" aria-label="Karte umdrehen">
-          <div class="card-inner">
-            <div class="face front">
-              <div class="meta"><span>${item.rev ? 'Rückseite' : 'Vorderseite'}</span><span>Fach ${c.box}${item.tries ? ' · Wiederholung' : ''}</span></div>
-              <div class="word">${esc(q)}</div>
-              <div class="hint">Antippen zum Umdrehen<kbd style="margin-left:6px">Leertaste</kbd></div>
-            </div>
-            <div class="face back">
-              <div class="meta"><span>${esc(q)}</span><span>Lösung</span></div>
-              <div class="word">${esc(a)}</div>
-              <div class="hint">Gewusst? Wähle unten.</div>
-            </div>
-          </div>
-        </div>
+        ${progress}
+        ${cardHtml(item, c, { flipped: session.flipped, hint: 'Antippen zum Umdrehen<kbd style="margin-left:6px">Leertaste</kbd>', backHint: 'Gewusst? Wähle unten.' })}
         <div class="answer">
           <button class="btn bad" id="noBtn"${session.flipped ? '' : ' disabled'}>Nicht gewusst <kbd>←</kbd></button>
           <button class="btn good" id="yesBtn"${session.flipped ? '' : ' disabled'}>Gewusst <kbd>→</kbd></button>
@@ -846,7 +1030,7 @@ details summary { cursor: pointer; font-weight: 650; }
     const existing = new Set(d.cards.map((c) => c.front + '\u0000' + c.back));
     let added = 0;
     ok.forEach(([f, b]) => { const k = f + '\u0000' + b; if (!existing.has(k)) { d.cards.push(newCard(f, b)); existing.add(k); added++; } });
-    state.current = d.id; session = null;
+    state.current = d.id; state.learnDecks = [d.id]; session = null;
     save();
     $('importText').value = ''; $('importName').value = ''; $('importFile').value = '';
     clearReview();
@@ -883,21 +1067,47 @@ details summary { cursor: pointer; font-weight: 650; }
   $('deckSelect').addEventListener('change', (e) => { state.current = e.target.value; session = null; save(); render(); });
 
   $('learnArea').addEventListener('click', (e) => {
-    if (e.target.closest('[data-go]')) return setTab(e.target.closest('[data-go]').dataset.go);
-    if (e.target.closest('#startBtn')) return startSession();
-    if (e.target.closest('#endBtn')) { session = null; return renderLearn(); }
-    if (e.target.closest('#yesBtn')) return answer(true);
-    if (e.target.closest('#noBtn')) return answer(false);
-    if (e.target.closest('.card')) return flip();
+    const t = e.target;
+    if (t.closest('[data-go]')) return setTab(t.closest('[data-go]').dataset.go);
+    if (t.closest('#startBtn')) return startSession();
+    if (t.closest('#endBtn')) { session = null; renderLearn(); window.scrollTo({ top: 0 }); return; }
+    if (t.closest('#yesBtn')) return answer(true);
+    if (t.closest('#noBtn')) return answer(false);
+    if (t.closest('#nextBtn')) return nextWrite(false);
+    if (t.closest('#overrideBtn')) return nextWrite(true);
+    if (t.closest('#skipBtn')) return skipWrite();
+    const tile = t.closest('.tile');
+    if (tile) return matchClick(tile.dataset.side, tile.dataset.id);
+    const chip = t.closest('[data-deck]');
+    if (chip) {
+      const ids = new Set(learnDecks().map((d) => d.id)), id = chip.dataset.deck;
+      if (ids.has(id)) { if (ids.size > 1) ids.delete(id); } else ids.add(id);
+      state.learnDecks = [...ids];
+      if (ids.size === 1) state.current = [...ids][0];
+      save(); renderBoxes(); renderDeckSelect(); return renderLearn();
+    }
+    if (t.closest('#allDecks')) {
+      state.learnDecks = learnDecks().length === state.decks.length ? [state.current || state.decks[0].id] : state.decks.map((d) => d.id);
+      save(); renderBoxes(); return renderLearn();
+    }
+    const mb = t.closest('[data-mode]');
+    if (mb && $('modeSel') && $('modeSel').contains(mb)) { state.mode = mb.dataset.mode; save(); return renderLearn(); }
+    if (t.closest('.card')) return flip();
   });
+  $('learnArea').addEventListener('submit', (e) => { if (e.target.id === 'writeForm') { e.preventDefault(); checkWrite(); } });
   $('learnArea').addEventListener('change', (e) => {
     if (e.target.id === 'dirSel') { state.dir = e.target.value; save(); }
-    if (e.target.id === 'sizeSel') { state.size = e.target.value; save(); }
+    if (e.target.id === 'sizeSel') { state.size = e.target.value; save(); renderLearn(); }
   });
   document.addEventListener('keydown', (e) => {
     if (tab !== 'learn' || !session || session.pos >= session.queue.length) return;
     const tag = (e.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (session.mode === 'write') {
+      if (e.key === 'Enter' && session.checked && tag !== 'button') { e.preventDefault(); nextWrite(false); }
+      return;
+    }
+    if (session.mode !== 'cards') return;
     if (e.key === ' ' || e.key === 'Enter') { if (tag === 'button' && !e.target.classList.contains('card')) return; e.preventDefault(); flip(); }
     else if (e.key === 'ArrowRight' || e.key === '2') { e.preventDefault(); answer(true); }
     else if (e.key === 'ArrowLeft' || e.key === '1') { e.preventDefault(); answer(false); }
@@ -1619,7 +1829,7 @@ Antworte nur mit JSON in diesem Format: {"pairs":[{"front":"…","back":"…","c
     $('ocrThumbs').hidden = true; $('ocrStatus').hidden = true; setCheckMsg('');
   });
 
-  render();
+  setTab('learn');
 })();
 </script>
 <script>

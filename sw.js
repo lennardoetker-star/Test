@@ -1,6 +1,6 @@
 // Offline-Cache: App-Dateien vorab speichern. Eigene Dateien immer frisch aus dem Netz holen
 // (am Browser-Cache vorbei), damit Updates sofort ankommen. Ohne Netz: gespeicherte Version.
-const CACHE = 'karteikasten-v9';
+const CACHE = 'karteikasten-v10';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
