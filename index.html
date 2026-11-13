@@ -191,6 +191,15 @@ details summary { cursor: pointer; font-weight: 700; }
   .box .t { font-size: .64rem; letter-spacing: .02em; }
   .box .n { font-size: 1.15rem; }
 }
+.ocr { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.ocr p { margin: 0; }
+.ocr-status { display: flex; flex-direction: column; gap: 6px; }
+.ocr-status .track { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.ocr-status .track i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.ocr-status.error { color: var(--bad); }
+.ocr-status.done { color: var(--good); }
+#ocrPreview { max-width: 100%; max-height: 220px; object-fit: contain; align-self: flex-start; border-radius: 6px; border: 1px solid var(--line); }
+.btn.busy { opacity: .55; pointer-events: none; }
 @media (hover: none) { kbd { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   .card-inner, .progress .track i { transition: none; }
@@ -256,6 +265,31 @@ details summary { cursor: pointer; font-weight: 700; }
 
   <!-- IMPORT -->
   <section class="panel" id="view-import" hidden>
+    <div class="ocr">
+      <h2>Aus einem Foto</h2>
+      <div class="row">
+        <div class="field">
+          <label class="lbl" for="ocrLang">Sprachen auf dem Foto</label>
+          <select id="ocrLang">
+            <option value="eng+deu">Englisch und Deutsch</option>
+            <option value="fra+deu">Französisch und Deutsch</option>
+            <option value="spa+deu">Spanisch und Deutsch</option>
+            <option value="lat+deu">Latein und Deutsch</option>
+            <option value="ita+deu">Italienisch und Deutsch</option>
+            <option value="deu">Nur Deutsch</option>
+          </select>
+        </div>
+        <label class="btn primary" for="ocrFile" id="ocrBtn">Foto aufnehmen oder wählen</label>
+        <input type="file" id="ocrFile" accept="image/*" hidden>
+      </div>
+      <div class="ocr-status small" id="ocrStatus" hidden>
+        <span id="ocrMsg"></span>
+        <span class="track"><i id="ocrBar"></i></span>
+      </div>
+      <img id="ocrPreview" alt="Ausgewähltes Foto" hidden>
+      <p class="small muted">Fotografiere nur die Vokabelliste, gerade von oben und gut beleuchtet. Der erkannte Text erscheint unten im Textfeld. Prüfe ihn dort, bevor du importierst.</p>
+    </div>
+    <h2>Als Text</h2>
     <div class="format">
       <strong>So sieht deine Liste aus</strong>
       <span>Eine Vokabel pro Zeile, Vorderseite und Rückseite getrennt durch <code> - </code>, <code> = </code>, <code>;</code>, <code>,</code> oder Tabulator.</span>
@@ -650,6 +684,103 @@ details summary { cursor: pointer; font-weight: 700; }
     r.readAsText(f);
   });
   $('doImport').addEventListener('click', doImport);
+
+  /* ---------- Foto-Import (Texterkennung) ---------- */
+  let tessLoading = null;
+  function loadTesseract() {
+    if (window.Tesseract) return Promise.resolve();
+    if (!tessLoading) tessLoading = new Promise((res, rej) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+      sc.onload = res;
+      sc.onerror = () => { tessLoading = null; sc.remove(); rej(new Error('load')); };
+      document.head.appendChild(sc);
+    });
+    return tessLoading;
+  }
+  function prepImage(file) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(file); const img = new Image();
+      img.onload = () => {
+        const max = 2400, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.filter = 'grayscale(1) contrast(1.25)';
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url); res(c);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('img')); };
+      img.src = url;
+    });
+  }
+  // Teilt jede erkannte Zeile an der Lücke zwischen den zwei Spalten.
+  function linesToText(lines) {
+    const rows = [];
+    lines.forEach((ln) => {
+      const words = (ln.words || []).filter((w) => w.text.trim() && w.confidence > 20);
+      const plain = words.map((w) => w.text).join(' ');
+      if (plain.replace(/[^\p{L}]/gu, '').length < 2) return;
+      const h = Math.max(1, ln.bbox.y1 - ln.bbox.y0);
+      const gaps = [];
+      for (let i = 0; i < words.length - 1; i++) gaps.push(words[i + 1].bbox.x0 - words[i].bbox.x1);
+      let split = -1;
+      if (gaps.length) {
+        const sorted = [...gaps].sort((a, b) => a - b);
+        const med = sorted[Math.floor((sorted.length - 1) / 2)];
+        let mi = 0; gaps.forEach((g, i) => { if (g > gaps[mi]) mi = i; });
+        const thr = gaps.length > 1 ? Math.max(h * 0.8, med * 2.5) : h * 0.8;
+        if (gaps[mi] > thr) split = mi;
+      }
+      rows.push({ words, split, h, col: split >= 0 ? words[split + 1].bbox.x0 : null });
+    });
+    const cols = rows.filter((r) => r.col != null).map((r) => r.col).sort((a, b) => a - b);
+    const colX = cols.length >= 2 ? cols[Math.floor(cols.length / 2)] : null;
+    const join = (ws) => ws.map((w) => w.text).join(' ').trim();
+    return rows.map((r) => {
+      let s = r.split;
+      if (s < 0 && colX != null) { const j = r.words.findIndex((w) => w.bbox.x0 >= colX - r.h); if (j > 0) s = j - 1; }
+      return s >= 0 ? `${join(r.words.slice(0, s + 1))} - ${join(r.words.slice(s + 1))}` : join(r.words);
+    });
+  }
+  $('ocrFile').addEventListener('change', async (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    e.target.value = '';
+    const st = $('ocrStatus');
+    const setP = (msg, p, cls) => { st.hidden = false; st.className = 'ocr-status small' + (cls ? ' ' + cls : ''); $('ocrMsg').textContent = msg; $('ocrBar').style.width = Math.round((p || 0) * 100) + '%'; };
+    const prev = $('ocrPreview');
+    if (prev.src) URL.revokeObjectURL(prev.src);
+    prev.src = URL.createObjectURL(f); prev.hidden = false;
+    $('ocrBtn').classList.add('busy'); e.target.disabled = true;
+    let worker = null;
+    try {
+      setP('Texterkennung wird geladen …', 0);
+      await loadTesseract();
+      const canvas = await prepImage(f);
+      worker = await Tesseract.createWorker($('ocrLang').value.split('+'), 1, {
+        logger: (m) => {
+          if (m.status === 'recognizing text') setP('Text wird erkannt …', m.progress);
+          else if (/load|initiali/i.test(m.status)) setP('Sprachdaten werden geladen (beim ersten Mal dauert das etwas) …', m.progress);
+        }
+      });
+      const { data } = await worker.recognize(canvas);
+      const lines = linesToText(data.lines || []);
+      if (!lines.length) { setP('Auf dem Foto wurde kein Text erkannt. Versuche ein schärferes, helleres Foto.', 0, 'error'); return; }
+      const ta = $('importText');
+      ta.value = (ta.value.trim() ? ta.value.trimEnd() + '\n' : '') + lines.join('\n');
+      updatePreview();
+      setP(`${lines.length} Zeilen erkannt. Prüfe und korrigiere sie im Textfeld unten.`, 1, 'done');
+      ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (err) {
+      setP(err && err.message === 'img'
+        ? 'Das Bild konnte nicht geöffnet werden. Versuche ein JPG- oder PNG-Foto.'
+        : 'Die Texterkennung konnte nicht geladen werden. Beim ersten Mal braucht die App dafür Internet.', 0, 'error');
+    } finally {
+      if (worker) worker.terminate();
+      $('ocrBtn').classList.remove('busy'); e.target.disabled = false;
+    }
+  });
 
   render();
 })();

@@ -1,6 +1,6 @@
 # Vokabel-Karteikasten
 
-Vokabeln einfügen oder als .txt/.csv hochladen und wie Karteikarten lernen (5-Fächer-System).
+Vokabeln einfügen, als .txt/.csv hochladen oder aus einem Foto erkennen lassen, und wie Karteikarten lernen (5-Fächer-System).
 Läuft als Web-App (PWA): zum Home-Bildschirm hinzufügen, dann startet sie im Vollbild und funktioniert auch offline.
 
 ## Online stellen (GitHub Pages)
