@@ -199,7 +199,14 @@ details summary { cursor: pointer; font-weight: 700; }
 .ocr-status .track i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
 .ocr-status.error { color: var(--bad); }
 .ocr-status.done { color: var(--good); }
-#ocrPreview { max-width: 100%; max-height: 220px; object-fit: contain; align-self: flex-start; border-radius: 6px; border: 1px solid var(--line); }
+.thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.thumbs figure { margin: 0; display: flex; flex-direction: column; gap: 2px; align-items: center; width: 76px; }
+.thumbs img { width: 76px; height: 76px; object-fit: cover; border-radius: 6px; border: 2px solid var(--line); display: block; }
+.thumbs .busy img { border-color: var(--accent); }
+.thumbs .ok img { border-color: var(--good); }
+.thumbs .bad img { border-color: var(--bad); }
+.thumbs figcaption { font-size: .72rem; color: var(--muted); text-align: center; line-height: 1.2; }
+.thumbs .ok figcaption { color: var(--good); } .thumbs .bad figcaption { color: var(--bad); }
 .btn.busy { opacity: .55; pointer-events: none; }
 .review { display: flex; flex-direction: column; gap: 8px; }
 .review-head { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; align-items: center; font-weight: 700; }
@@ -289,7 +296,7 @@ details summary { cursor: pointer; font-weight: 700; }
   <!-- IMPORT -->
   <section class="panel" id="view-import" hidden>
     <div class="ocr">
-      <h2>Aus einem Foto</h2>
+      <h2>Aus Fotos</h2>
       <div class="row">
         <div class="field">
           <label class="lbl" for="ocrLang">Sprachen auf dem Foto</label>
@@ -302,16 +309,18 @@ details summary { cursor: pointer; font-weight: 700; }
             <option value="deu">Nur Deutsch</option>
           </select>
         </div>
-        <label class="btn primary" for="ocrFile" id="ocrBtn">Foto aufnehmen oder wählen</label>
-        <input type="file" id="ocrFile" accept="image/*" hidden>
+        <label class="btn primary" for="ocrCam" id="ocrBtn">Foto aufnehmen</label>
+        <input type="file" id="ocrCam" accept="image/*" capture="environment" hidden>
+        <label class="btn" for="ocrFile" id="ocrBtn2">Fotos auswählen</label>
+        <input type="file" id="ocrFile" accept="image/*" multiple hidden>
       </div>
       <div class="ocr-status small" id="ocrStatus" hidden>
         <span id="ocrMsg"></span>
         <span class="track"><i id="ocrBar"></i></span>
       </div>
-      <img id="ocrPreview" alt="Ausgewähltes Foto" hidden>
+      <div class="thumbs" id="ocrThumbs" hidden></div>
       <p class="small ai-state" id="aiState"></p>
-      <p class="small muted">Fotografiere die Vokabelliste möglichst gerade und gut beleuchtet. Das Ergebnis erscheint unten zur Kontrolle, bevor du importierst.</p>
+      <p class="small muted">Mehrere Seiten? Fotografiere sie nacheinander oder wähle mehrere Fotos auf einmal aus. Jedes Foto wird an die Liste unten angehängt, doppelte Vokabeln werden aussortiert. Fotografiere möglichst gerade und gut beleuchtet.</p>
     </div>
     <h2>Als Text</h2>
     <div class="format">
@@ -352,7 +361,7 @@ details summary { cursor: pointer; font-weight: 700; }
     </div>
     <p class="small check-msg" id="checkMsg" hidden></p>
     <div class="review" id="review" hidden>
-      <div class="review-head"><span id="reviewSummary"></span><label><input type="checkbox" id="onlyIssues"> Nur auffällige zeigen</label></div>
+      <div class="review-head"><span id="reviewSummary"></span><label><input type="checkbox" id="onlyIssues"> Nur auffällige zeigen</label><button class="link" id="clearList">Liste leeren</button></div>
       <div class="review" id="reviewRows"></div>
       <details class="removed" id="removedBox" hidden><summary id="removedSum"></summary><ul id="removedList"></ul></details>
       <p class="small muted" style="margin:0" id="reviewNote"></p>
@@ -1099,18 +1108,29 @@ Regeln:
     }
     throw new Error(last && models.length === 1 ? last.message + ' Trag in den KI-Einstellungen ein anderes Modell ein oder lass das Feld leer.' : 'Kein Gemini-Modell ist mit deinem Schlüssel verfügbar.');
   }
-  function applyAi(res) {
+  const reviewAsText = () => review.map((r) => `${r.front} - ${r.back}`).join('\n');
+  function applyAi(res, append) {
     const pairs = (res && Array.isArray(res.pairs) ? res.pairs : []).filter((x) => x && (String(x.front || '').trim() || String(x.back || '').trim()));
-    if (!pairs.length) throw new Error('Die KI hat keine Vokabeln gefunden. Versuche ein schärferes Foto.');
-    review = pairs.map((x) => ({
+    if (!pairs.length && !append) throw new Error('Die KI hat keine Vokabeln gefunden. Versuche ein schärferes Foto.');
+    const rows = pairs.map((x) => ({
       id: uid(), front: String(x.front || '').trim(), back: String(x.back || '').trim(), local: [], tr: { state: 'skip' }, v: 0, aiChecked: true, noAuto: true,
       ai: x.changed ? { note: String(x.note || '').trim(), original: String(x.original || '').trim() } : null
     }));
-    removed = (res.removed || []).map((t) => String(t).trim()).filter(Boolean);
-    $('importText').value = review.map((r) => `${r.front} - ${r.back}`).join('\n');
+    const gone = (res && Array.isArray(res.removed) ? res.removed : []).map((t) => String(t).trim()).filter(Boolean);
+    let added = rows.length;
+    if (append && review) {
+      const lf = $('langFront').value, lb = $('langBack').value;
+      const key = (r) => norm(r.front, lf) + '|' + norm(r.back, lb);
+      const have = new Set(review.map(key));
+      const fresh = rows.filter((r) => { const k = key(r); if (have.has(k)) return false; have.add(k); return true; });
+      added = fresh.length;
+      review = review.concat(fresh); removed = removed.concat(gone);
+    } else { review = rows; removed = gone; }
+    if (!review.length) { clearReview(); return 0; }
+    $('importText').value = reviewAsText();
     review.forEach((r) => { r.local = localIssues(r); });
     renderReview();
-    return review.length;
+    return added;
   }
   function setCheckMsg(text, cls) { const m = $('checkMsg'); m.hidden = !text; m.textContent = text || ''; m.className = 'small check-msg' + (cls ? ' ' + cls : ''); }
   async function aiCheckText() {
@@ -1207,60 +1227,94 @@ Regeln:
       return s >= 0 ? `${join(r.words.slice(0, s + 1))} - ${join(r.words.slice(s + 1))}` : join(r.words);
     });
   }
-  $('ocrFile').addEventListener('change', async (e) => {
-    const f = e.target.files && e.target.files[0]; if (!f) return;
+  let thumbUrls = [];
+  async function handlePhotos(e) {
+    const files = [...(e.target.files || [])]; if (!files.length) return;
     e.target.value = '';
     const st = $('ocrStatus');
     const setP = (msg, p, cls) => { st.hidden = false; st.className = 'ocr-status small' + (cls ? ' ' + cls : ''); $('ocrMsg').textContent = msg; $('ocrBar').style.width = Math.round((p || 0) * 100) + '%'; };
-    const prev = $('ocrPreview');
-    if (prev.src) URL.revokeObjectURL(prev.src);
-    prev.src = URL.createObjectURL(f); prev.hidden = false;
-    $('ocrBtn').classList.add('busy'); e.target.disabled = true;
-    if (aiOn()) {
-      try {
-        setLangsFromOcr();
-        setP('Die KI liest das Foto … (dauert ein paar Sekunden)', 0.4);
-        const canvas = await prepImage(f, 1600, false);
-        const b64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
-        const n = applyAi(await gemini([{ text: aiPrompt('image') }, { inlineData: { mimeType: 'image/jpeg', data: b64 } }]));
-        const fixed = review.filter((r) => r.ai).length;
-        setP(`${n} Vokabeln erkannt` + (fixed ? `, ${fixed} davon verbessert` : '') + (removed.length ? `, ${removed.length} Nicht-Vokabeln entfernt` : '') + '. Kontrolliere die Liste unten.', 1, 'done');
-        $('review').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } catch (err) {
-        setP(err && err.message === 'img' ? 'Das Bild konnte nicht geöffnet werden. Versuche ein JPG- oder PNG-Foto.' : err.message, 0, 'error');
-      } finally {
-        $('ocrBtn').classList.remove('busy'); e.target.disabled = false;
-      }
-      return;
-    }
-    let worker = null;
+    thumbUrls.forEach((u) => URL.revokeObjectURL(u));
+    thumbUrls = files.map((f) => URL.createObjectURL(f));
+    const th = $('ocrThumbs');
+    th.innerHTML = files.map((f, i) => `<figure id="th-${i}"><img src="${thumbUrls[i]}" alt="Foto ${i + 1}"><figcaption>Foto ${i + 1}</figcaption></figure>`).join('');
+    th.hidden = false;
+    const mark = (i, cls, txt) => { const el = $('th-' + i); if (el) { el.className = cls; el.querySelector('figcaption').textContent = txt; } };
+    const btns = [$('ocrBtn'), $('ocrBtn2')], inputs = [$('ocrCam'), $('ocrFile')];
+    btns.forEach((b) => b.classList.add('busy')); inputs.forEach((x) => { x.disabled = true; });
+    setLangsFromOcr();
+    const N = files.length, fails = [];
+    let total = 0;
+    const useAi = aiOn();
     try {
-      setP('Texterkennung wird geladen …', 0);
-      await loadTesseract();
-      const canvas = await prepImage(f);
-      worker = await Tesseract.createWorker($('ocrLang').value.split('+'), 1, {
-        logger: (m) => {
-          if (m.status === 'recognizing text') setP('Text wird erkannt …', m.progress);
-          else if (/load|initiali/i.test(m.status)) setP('Sprachdaten werden geladen (beim ersten Mal dauert das etwas) …', m.progress);
+      if (useAi) {
+        for (let i = 0; i < N; i++) {
+          mark(i, 'busy', 'liest …');
+          setP(N > 1 ? `Die KI liest Foto ${i + 1} von ${N} …` : 'Die KI liest das Foto … (dauert ein paar Sekunden)', (i + 0.4) / N);
+          try {
+            const canvas = await prepImage(files[i], 1600, false);
+            const b64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+            const n = applyAi(await gemini([{ text: aiPrompt('image') }, { inlineData: { mimeType: 'image/jpeg', data: b64 } }]), true);
+            total += n;
+            mark(i, n ? 'ok' : 'bad', n ? `${n} neu` : 'nichts Neues');
+          } catch (err) {
+            const msg = err.message === 'img' ? 'Bild konnte nicht geöffnet werden' : err.message;
+            fails.push(`Foto ${i + 1}: ${msg}`); mark(i, 'bad', 'Fehler');
+            if (err.fatal || /Schlüssel|Limit|Modell|erreichbar/.test(msg)) { for (let j = i + 1; j < N; j++) mark(j, 'bad', 'übersprungen'); break; }
+          }
         }
-      });
-      const { data } = await worker.recognize(canvas);
-      const lines = linesToText(data.lines || []);
-      if (!lines.length) { setP('Auf dem Foto wurde kein Text erkannt. Versuche ein schärferes, helleres Foto.', 0, 'error'); return; }
-      const ta = $('importText');
-      ta.value = (ta.value.trim() ? ta.value.trimEnd() + '\n' : '') + lines.join('\n');
-      setLangsFromOcr();
-      setP(`${lines.length} Zeilen erkannt. Die Liste unten wird automatisch geprüft.`, 1, 'done');
-      runCheck();
+      } else {
+        let worker = null, cur = 0;
+        try {
+          setP('Texterkennung wird geladen …', 0);
+          await loadTesseract();
+          worker = await Tesseract.createWorker($('ocrLang').value.split('+'), 1, {
+            logger: (m) => {
+              if (m.status === 'recognizing text') setP(N > 1 ? `Text auf Foto ${cur + 1} von ${N} wird erkannt …` : 'Text wird erkannt …', (cur + m.progress) / N);
+              else if (/load|initiali/i.test(m.status)) setP('Sprachdaten werden geladen (beim ersten Mal dauert das etwas) …', 0);
+            }
+          });
+        } catch (err) {
+          setP('Die Texterkennung konnte nicht geladen werden. Beim ersten Mal braucht die App dafür Internet.', 0, 'error');
+          files.forEach((f, i) => mark(i, 'bad', 'Fehler'));
+          if (worker) worker.terminate();
+          return;
+        }
+        const all = [];
+        for (cur = 0; cur < N; cur++) {
+          mark(cur, 'busy', 'liest …');
+          try {
+            const { data } = await worker.recognize(await prepImage(files[cur]));
+            const lines = linesToText(data.lines || []);
+            all.push(...lines); total += lines.length;
+            if (lines.length) mark(cur, 'ok', `${lines.length} Zeilen`);
+            else { mark(cur, 'bad', 'kein Text'); fails.push(`Foto ${cur + 1}: kein Text erkannt`); }
+          } catch (err) { mark(cur, 'bad', 'Fehler'); fails.push(`Foto ${cur + 1}: Bild konnte nicht geöffnet werden`); }
+        }
+        worker.terminate();
+        if (all.length) {
+          const ta = $('importText');
+          const base = review ? reviewAsText() : ta.value;
+          ta.value = (base.trim() ? base.trimEnd() + '\n' : '') + all.join('\n');
+          runCheck();
+        }
+      }
+      if (!total) {
+        setP(fails.length ? fails.join(' · ') : 'Auf den Fotos wurden keine neuen Vokabeln gefunden.', 0, 'error');
+        return;
+      }
+      const ok = N - fails.length;
+      const what = useAi ? `${total} ${total === 1 ? 'neue Vokabel' : 'neue Vokabeln'}` : `${total} ${total === 1 ? 'Zeile' : 'Zeilen'} erkannt`;
+      setP((N > 1 ? `${ok} von ${N} Fotos gelesen, ` : '') + what + (useAi ? '' : ', sie werden geprüft') + '. Kontrolliere die Liste unten.' + (fails.length ? ' Nicht geklappt: ' + fails.join(' · ') : ''), 1, fails.length ? '' : 'done');
       $('review').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } catch (err) {
-      setP(err && err.message === 'img'
-        ? 'Das Bild konnte nicht geöffnet werden. Versuche ein JPG- oder PNG-Foto.'
-        : 'Die Texterkennung konnte nicht geladen werden. Beim ersten Mal braucht die App dafür Internet.', 0, 'error');
     } finally {
-      if (worker) worker.terminate();
-      $('ocrBtn').classList.remove('busy'); e.target.disabled = false;
+      btns.forEach((b) => b.classList.remove('busy')); inputs.forEach((x) => { x.disabled = false; });
     }
+  }
+  $('ocrCam').addEventListener('change', handlePhotos);
+  $('ocrFile').addEventListener('change', handlePhotos);
+  $('clearList').addEventListener('click', () => {
+    $('importText').value = ''; clearReview();
+    $('ocrThumbs').hidden = true; $('ocrStatus').hidden = true; setCheckMsg('');
   });
 
   render();
