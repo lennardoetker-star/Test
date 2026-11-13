@@ -540,6 +540,7 @@ details summary { cursor: pointer; font-weight: 650; }
     <div class="group">
       <h2>Deine Daten</h2>
       <p class="small muted">Stapel und Lernstand sind nur auf diesem Gerät gespeichert. Zum Sichern oder Übertragen öffne „Karten“ und exportiere den Stapel als Text.</p>
+      <p class="small muted">App-Version 9</p>
     </div>
   </section>
 </div>
@@ -1344,9 +1345,12 @@ Antworte nur mit JSON in diesem Format: {"pairs":[{"front":"…","back":"…","c
             break;
           }
           tries++;
-          if (tries < 2) await sleep(2000);
+          if (tries < 2) await sleep(/überlastet/.test(e.message) ? 4000 : 2000);
         }
       }
+    }
+    if (last && /überlastet/.test(last.message) && models.length > 1) {
+      last.message = 'Alle Gemini-Modelle sind gerade überlastet. Das liegt an Google, nicht an dir. Versuch es in ein paar Minuten nochmal oder schalte in den Einstellungen den Modus um.';
     }
     throw withDetail(last || aiErr('Kein Gemini-Modell ist mit deinem Schlüssel verfügbar.', 'fatal'));
   }
@@ -1620,7 +1624,17 @@ Antworte nur mit JSON in diesem Format: {"pairs":[{"front":"…","back":"…","c
 </script>
 <script>
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  window.addEventListener('load', function () {
+    var hadController = !!navigator.serviceWorker.controller, reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      // Neue Version ist aktiv: einmal neu laden, damit sie sofort benutzt wird
+      if (hadController && !reloaded) { reloaded = true; location.reload(); }
+    });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) {
+      reg.update().catch(function () {});
+      document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') reg.update().catch(function () {}); });
+    }).catch(function () {});
+  });
 }
 </script>
 </body>
