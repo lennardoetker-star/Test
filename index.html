@@ -1260,40 +1260,100 @@ Regeln:
 - Korrigiere eindeutige Erkennungs- und Tippfehler (zum Beispiel 0 statt o, rn statt m, fehlende Umlaute oder Akzente). Behalte Zusätze wie "to", Artikel, "sich", "jdn." oder "etw." bei.
 - Übernimm die Übersetzung aus der Vorlage. Ersetze oder ergänze sie nur, wenn sie eindeutig falsch ist oder fehlt.
 - Wenn du an einem Paar etwas korrigiert, ergänzt, zusammengeführt oder neu zugeordnet hast, setze "changed" auf true, schreibe in "original", wie es in der Vorlage stand, und in "note" einen kurzen deutschen Hinweis, was du geändert hast. Sonst "changed": false.
-- Erfinde keine Vokabeln, die nicht in der Vorlage stehen.`;
+- Erfinde keine Vokabeln, die nicht in der Vorlage stehen.
+Antworte nur mit JSON in diesem Format: {"pairs":[{"front":"…","back":"…","changed":false,"original":"","note":""}],"removed":["…"]}`;
   }
-  async function geminiOnce(model, parts) {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  function aiErr(msg, kind, detail) { const e = new Error(msg); e.kind = kind; e.detail = detail || ''; return e; }
+  // kind: 'fatal' (abbrechen), 'next' (anderes Modell), 'retry' (nochmal versuchen), 'noschema' (ohne Schema nochmal)
+  async function geminiOnce(model, parts, useSchema) {
+    const gen = { temperature: 0.1, responseMimeType: 'application/json' };
+    if (useSchema) gen.responseSchema = AI_SCHEMA;
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 120000) : null;
     let res;
     try {
       res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(ai.key.trim())}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { temperature: 0.1, responseMimeType: 'application/json', responseSchema: AI_SCHEMA } })
+        body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: gen }),
+        signal: ctrl ? ctrl.signal : undefined
       });
-    } catch (e) { const er = new Error('Die KI ist nicht erreichbar. Prüfe deine Internetverbindung.'); er.fatal = true; throw er; }
+    } catch (e) {
+      if (e && e.name === 'AbortError') throw aiErr('Die KI hat zu lange gebraucht.', 'retry');
+      throw aiErr('Die KI ist nicht erreichbar. Prüfe deine Internetverbindung.', navigator.onLine === false ? 'fatal' : 'retry', String(e && e.message || e));
+    } finally { if (timer) clearTimeout(timer); }
     let j = null; try { j = await res.json(); } catch (e) {}
     if (!res.ok) {
       const m = (j && j.error && j.error.message) || '';
-      const er = new Error('');
-      if (res.status === 404 || (res.status === 429 && /limit:\s*0\b/i.test(m))) { er.next = true; er.message = `Das Modell „${model}“ ist mit deinem Schlüssel nicht verfügbar.`; }
-      else if (/api key|API_KEY/i.test(m) || res.status === 401) er.message = 'Der API-Schlüssel ist ungültig. Prüfe ihn in den KI-Einstellungen.';
-      else if (res.status === 429) er.message = 'Das kostenlose KI-Limit ist gerade erreicht. Versuch es in einer Minute nochmal.';
-      else if (res.status === 403) er.message = 'Der API-Schlüssel hat keinen Zugriff auf Gemini.';
-      else if (res.status >= 500) er.message = 'Gemini ist gerade überlastet. Versuch es gleich nochmal.';
-      else er.message = 'Die KI hat einen Fehler gemeldet: ' + (m || res.status);
-      throw er;
+      const detail = `${res.status} ${m}`.trim();
+      if (/api key|API_KEY/i.test(m) || res.status === 401) throw aiErr('Der API-Schlüssel ist ungültig. Prüfe ihn in den Einstellungen.', 'fatal', detail);
+      if (res.status === 404 || (res.status === 429 && /limit:\s*0\b/i.test(m))) throw aiErr(`Das Modell „${model}“ ist mit deinem Schlüssel nicht verfügbar.`, 'next', detail);
+      if (res.status === 429) throw aiErr('Das kostenlose KI-Limit ist gerade erreicht. Warte eine Minute und versuch es nochmal.', 'retry', detail);
+      if (res.status === 403) throw aiErr('Der API-Schlüssel hat keinen Zugriff auf Gemini.', 'fatal', detail);
+      if (res.status >= 500) throw aiErr('Gemini ist gerade überlastet.', 'retry', detail);
+      if (res.status === 400 && useSchema) throw aiErr('Die KI hat die Anfrage abgelehnt.', 'noschema', detail);
+      if (res.status === 400) throw aiErr('Die KI hat die Anfrage abgelehnt.', 'next', detail);
+      throw aiErr('Die KI hat einen Fehler gemeldet.', 'retry', detail);
     }
+    const block = j && j.promptFeedback && j.promptFeedback.blockReason;
+    if (block) throw aiErr(`Google hat das Foto abgelehnt (${block}).`, 'fatal', block);
     const cand = j && j.candidates && j.candidates[0];
-    const txt = ((cand && cand.content && cand.content.parts) || []).filter((x) => !x.thought).map((x) => x.text || '').join('');
-    try { return JSON.parse(txt); } catch (e) { throw new Error('Die Antwort der KI war unvollständig. Versuch es nochmal.'); }
+    const reason = cand && cand.finishReason;
+    const txt = ((cand && cand.content && cand.content.parts) || []).filter((x) => !x.thought).map((x) => x.text || '').join('').trim();
+    if (!txt) {
+      if (reason === 'RECITATION') throw aiErr('Google hat die Antwort blockiert, weil sie Buchtext wörtlich wiedergibt. Fotografiere einen kleineren Ausschnitt.', 'retry', reason);
+      if (reason === 'SAFETY' || reason === 'PROHIBITED_CONTENT') throw aiErr(`Google hat die Antwort blockiert (${reason}).`, 'fatal', reason);
+      throw aiErr('Die KI hat eine leere Antwort geschickt.', 'retry', reason || 'leer');
+    }
+    const clean = txt.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
+    try { return JSON.parse(clean); }
+    catch (e) {
+      const m2 = clean.match(/\{[\s\S]*\}/);
+      if (m2) { try { return JSON.parse(m2[0]); } catch (e2) {} }
+      throw aiErr(reason === 'MAX_TOKENS' ? 'Die Liste war zu lang für eine Antwort. Fotografiere weniger auf einmal.' : 'Die Antwort der KI war unvollständig.', 'retry', reason || 'JSON');
+    }
   }
   async function gemini(parts) {
     const models = ai.model && ai.model.trim() ? [ai.model.trim()] : AI_MODELS;
-    let last;
+    let last = null;
     for (const m of models) {
-      try { return await geminiOnce(m, parts); }
-      catch (e) { last = e; if (!e.next) throw e; }
+      let useSchema = true;
+      for (let attempt = 0, tries = 0; attempt < 3 && tries < 2; attempt++) {
+        try { return await geminiOnce(m, parts, useSchema); }
+        catch (e) {
+          last = e;
+          if (e.kind === 'fatal') throw withDetail(e);
+          if (e.kind === 'next') break;
+          if (e.kind === 'noschema') { useSchema = false; continue; }
+          tries++;
+          if (tries < 2) await sleep(2000);
+        }
+      }
     }
-    throw new Error(last && models.length === 1 ? last.message + ' Trag in den KI-Einstellungen ein anderes Modell ein oder lass das Feld leer.' : 'Kein Gemini-Modell ist mit deinem Schlüssel verfügbar.');
+    throw withDetail(last || aiErr('Kein Gemini-Modell ist mit deinem Schlüssel verfügbar.', 'fatal'));
+  }
+  function withDetail(e) {
+    if (e.detail && !e.withDetail) { e.message = `${e.message} (Details: ${String(e.detail).slice(0, 160)})`; e.withDetail = true; }
+    return e;
+  }
+  function fileToBase64(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result).split(',')[1]);
+      r.onerror = () => rej(new Error('img'));
+      r.readAsDataURL(file);
+    });
+  }
+  async function imagePart(file) {
+    try {
+      const canvas = await prepImage(file, 1600, false);
+      return { inlineData: { mimeType: 'image/jpeg', data: canvas.toDataURL('image/jpeg', 0.85).split(',')[1] } };
+    } catch (e) {
+      // z. B. HEIC-Fotos, die der Browser nicht öffnen kann: Original direkt an Gemini schicken
+      const type = (file.type || '').toLowerCase() || (/\.hei[cf]$/i.test(file.name) ? 'image/heic' : '');
+      if (!/^image\//.test(type) || file.size > 15 * 1024 * 1024) throw new Error('img');
+      return { inlineData: { mimeType: type, data: await fileToBase64(file) } };
+    }
   }
   const reviewAsText = () => review.map((r) => `${r.front} - ${r.back}`).join('\n');
   function applyAi(res, append) {
@@ -1446,15 +1506,13 @@ Regeln:
           mark(i, 'busy', 'liest …');
           setP(N > 1 ? `Die KI liest Foto ${i + 1} von ${N} …` : 'Die KI liest das Foto … (dauert ein paar Sekunden)', (i + 0.4) / N);
           try {
-            const canvas = await prepImage(files[i], 1600, false);
-            const b64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
-            const n = applyAi(await gemini([{ text: aiPrompt('image') }, { inlineData: { mimeType: 'image/jpeg', data: b64 } }]), true);
+            const n = applyAi(await gemini([{ text: aiPrompt('image') }, await imagePart(files[i])]), true);
             total += n;
             mark(i, n ? 'ok' : 'bad', n ? `${n} neu` : 'nichts Neues');
           } catch (err) {
             const msg = err.message === 'img' ? 'Bild konnte nicht geöffnet werden' : err.message;
             fails.push(`Foto ${i + 1}: ${msg}`); mark(i, 'bad', 'Fehler');
-            if (err.fatal || /Schlüssel|Limit|Modell|erreichbar/.test(msg)) { for (let j = i + 1; j < N; j++) mark(j, 'bad', 'übersprungen'); break; }
+            if (err.kind === 'fatal' || /Schlüssel|Limit|Modell|erreichbar/.test(msg)) { for (let j = i + 1; j < N; j++) mark(j, 'bad', 'übersprungen'); break; }
           }
         }
       } else {
