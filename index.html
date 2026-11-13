@@ -79,7 +79,7 @@ header.top { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; j
 .deck-pick { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 0 1 320px; }
 label.lbl { font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
 
-select, input[type="text"], textarea {
+select, input[type="text"], input[type="password"], textarea {
   font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line);
   border-radius: 8px; padding: 9px 11px; width: 100%; min-width: 0;
 }
@@ -207,9 +207,21 @@ details summary { cursor: pointer; font-weight: 700; }
 .rv { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) auto; gap: 6px; align-items: center; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
 .rv.lvl-warn { border-color: var(--warn); }
 .rv.lvl-err { border-color: var(--bad); }
+.rv.lvl-fixed { border-color: var(--accent); }
+.removed { font-size: .9rem; }
+.removed ul { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.removed li span { color: var(--muted); text-decoration: line-through; overflow-wrap: anywhere; }
+.ai-setup { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.ai-setup[open] summary { margin-bottom: 12px; }
+.ai-setup .panel { gap: 12px; }
+.ai-setup p { margin: 0; }
+.ai-state { margin: 0; font-weight: 700; }
+.ai-state.on { color: var(--good); }
+.check-msg { margin: 0; }
+.check-msg.error { color: var(--bad); }
 .rv-status { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: .86rem; color: var(--muted); padding-inline: 2px; }
 .chip { font-weight: 700; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; padding: 1px 8px; border-radius: 999px; border: 1.5px solid currentColor; }
-.chip.ok { color: var(--good); } .chip.warn { color: var(--warn); } .chip.err { color: var(--bad); } .chip.wait { color: var(--muted); }
+.chip.fixed { color: var(--accent); } .chip.ok { color: var(--good); } .chip.warn { color: var(--warn); } .chip.err { color: var(--bad); } .chip.wait { color: var(--muted); }
 .link { border: 0; background: transparent; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 2px; }
 @media (hover: none) { kbd { display: none; } }
 @media (prefers-reduced-motion: reduce) {
@@ -298,7 +310,8 @@ details summary { cursor: pointer; font-weight: 700; }
         <span class="track"><i id="ocrBar"></i></span>
       </div>
       <img id="ocrPreview" alt="Ausgewähltes Foto" hidden>
-      <p class="small muted">Fotografiere nur die Vokabelliste, gerade von oben und gut beleuchtet. Der erkannte Text erscheint unten im Textfeld. Prüfe ihn dort, bevor du importierst.</p>
+      <p class="small ai-state" id="aiState"></p>
+      <p class="small muted">Fotografiere die Vokabelliste möglichst gerade und gut beleuchtet. Das Ergebnis erscheint unten zur Kontrolle, bevor du importierst.</p>
     </div>
     <h2>Als Text</h2>
     <div class="format">
@@ -337,12 +350,36 @@ details summary { cursor: pointer; font-weight: 700; }
       </div>
       <button class="btn" id="checkBtn" disabled>Vokabeln prüfen</button>
     </div>
+    <p class="small check-msg" id="checkMsg" hidden></p>
     <div class="review" id="review" hidden>
       <div class="review-head"><span id="reviewSummary"></span><label><input type="checkbox" id="onlyIssues"> Nur auffällige zeigen</label></div>
       <div class="review" id="reviewRows"></div>
-      <p class="small muted" style="margin:0">Zum Abgleich werden die Vokabeln an den kostenlosen Übersetzer MyMemory geschickt. Du kannst alles direkt in den Feldern korrigieren.</p>
+      <details class="removed" id="removedBox" hidden><summary id="removedSum"></summary><ul id="removedList"></ul></details>
+      <p class="small muted" style="margin:0" id="reviewNote"></p>
     </div>
     <div><button class="btn primary" id="doImport" disabled>Importieren</button></div>
+    <details class="ai-setup" id="aiSetup">
+      <summary><strong>KI-Einstellungen (Gemini)</strong></summary>
+      <div class="panel">
+        <p class="small">Mit einem kostenlosen Gemini-API-Schlüssel liest die KI deine Fotos, ordnet verrutschte Zeilen richtig zu, korrigiert Fehler und wirft Seitenzahlen, Uhrzeiten und Überschriften raus.</p>
+        <p class="small">So bekommst du einen Schlüssel: Öffne <a class="link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, melde dich mit einem Google-Konto an, tippe auf „API-Schlüssel erstellen“ und kopiere ihn hierher.</p>
+        <div class="field">
+          <label class="lbl" for="aiKey">API-Schlüssel</label>
+          <input type="password" id="aiKey" autocomplete="off" spellcheck="false" placeholder="AIza…">
+        </div>
+        <div class="field">
+          <label class="lbl" for="aiModel">Modell (optional)</label>
+          <input type="text" id="aiModel" autocomplete="off" spellcheck="false" placeholder="gemini-flash-latest">
+        </div>
+        <div class="row">
+          <button class="btn primary" id="aiSave">Speichern</button>
+          <button class="btn" id="aiTest">Testen</button>
+          <button class="btn danger" id="aiRemove">Schlüssel entfernen</button>
+        </div>
+        <p class="small" id="aiTestMsg" hidden></p>
+        <p class="small muted">Der Schlüssel bleibt nur auf diesem Gerät gespeichert. Fotos und Vokabeln, die du prüfen lässt, werden an Google geschickt.</p>
+      </div>
+    </details>
   </section>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -721,7 +758,9 @@ details summary { cursor: pointer; font-weight: 700; }
 
   /* ---------- Vokabeln prüfen ---------- */
   let review = null, trBlocked = '', checking = 0;
-  const CHIP = { ok: 'Passt', warn: 'Prüfen', err: 'Fehler', wait: 'Prüfe …' };
+  const CHIP = { ok: 'Passt', warn: 'Prüfen', err: 'Fehler', wait: 'Prüfe …', fixed: 'Verbessert' };
+  const LANG_NAME = { en: 'Englisch', fr: 'Französisch', es: 'Spanisch', la: 'Latein', it: 'Italienisch', de: 'Deutsch' };
+  let removed = [];
   const SIDE = { front: 'Vorderseite', back: 'Rückseite' };
   const ARTICLES = {
     de: ['der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einen', 'sich'],
@@ -815,10 +854,10 @@ details summary { cursor: pointer; font-weight: 700; }
     return out;
   }
 
-  function sugg(field, cand, lang, r, msg) {
+  function sugg(field, cand, lang, r, msg, auto) {
     const value = fitSuggestion(r[field], cand, lang);
     if (norm(value, lang) === norm(r[field], lang)) return { state: 'ok', msg: 'Übersetzer bestätigt' };
-    return { state: 'warn', msg, sug: { field, value } };
+    return { state: 'warn', msg, sug: { field, value }, auto: !!auto };
   }
   async function trCheck(r) {
     const lf = $('langFront').value, lb = $('langBack').value;
@@ -830,11 +869,11 @@ details summary { cursor: pointer; font-weight: 700; }
       const nb = closest(fwd, r.back, lb);
       if (nb.score >= 0.95) return { state: 'ok', msg: 'Übersetzer bestätigt' };
       // Fast gleich wie die Übersetzung: vermutlich Tipp- oder Erkennungsfehler auf der Rückseite
-      if (nb.score >= 0.6) return sugg('back', nb.cand, lb, r, 'Rückseite evtl. falsch erkannt oder geschrieben');
+      if (nb.score >= 0.6) return sugg('back', nb.cand, lb, r, 'Rückseite evtl. falsch erkannt oder geschrieben', true);
       const rev = await translate(r.back.trim(), lb, lf);
       const nf = closest(rev, r.front, lf);
       if (nf.score >= 0.95) return { state: 'ok', msg: 'Übersetzer bestätigt' };
-      if (nf.score >= 0.5) return sugg('front', nf.cand, lf, r, 'Vorderseite evtl. falsch erkannt oder geschrieben');
+      if (nf.score >= 0.5) return sugg('front', nf.cand, lf, r, 'Vorderseite evtl. falsch erkannt oder geschrieben', nf.score >= 0.6);
       const unknown = !fwd.length || fwd.every((c) => sim(norm(c, lb), norm(r.front, lf)) >= 0.9);
       if (unknown) return { state: 'warn', msg: `Der Übersetzer kennt „${r.front.trim()}“ nicht. Evtl. falsch erkannt.` };
       return sugg('back', fwd[0], lb, r, `Übersetzer sagt „${fwd[0]}“. Passt deine Übersetzung?`);
@@ -848,17 +887,21 @@ details summary { cursor: pointer; font-weight: 700; }
     if (r.local.some((x) => x[0] === 'err')) return 'err';
     if (r.local.length || r.tr.state === 'warn') return 'warn';
     if (r.tr.state === 'wait') return 'wait';
+    if (r.fixed || r.ai) return 'fixed';
     return 'ok';
   }
   function paintRow(r) {
     const el = document.querySelector(`.rv[data-id="${r.id}"]`); if (!el) return;
     const lv = level(r);
     el.className = 'rv lvl-' + lv;
-    el.hidden = $('onlyIssues').checked && lv === 'ok';
+    el.hidden = $('onlyIssues').checked && (lv === 'ok' || lv === 'fixed');
     const msgs = r.local.map((x) => x[1]);
-    if (r.tr.msg && !(lv !== 'ok' && r.tr.state === 'ok')) msgs.push(r.tr.msg);
-    if (!msgs.length) msgs.push(lv === 'wait' ? 'Wird mit dem Übersetzer abgeglichen' : 'Keine Auffälligkeiten');
+    if (r.fixed) msgs.push(`Automatisch verbessert: „${r.fixed.from}“ → „${r.fixed.to}“`);
+    if (r.ai) msgs.push((r.ai.note || 'Von der KI korrigiert') + (r.ai.original ? ` (vorher: „${r.ai.original}“)` : ''));
+    if (r.tr.msg && !(lv !== 'ok' && r.tr.state === 'ok') && !r.fixed) msgs.push(r.tr.msg);
+    if (!msgs.length) msgs.push(lv === 'wait' ? 'Wird mit dem Übersetzer abgeglichen' : r.aiChecked ? 'Von der KI geprüft' : 'Keine Auffälligkeiten');
     let html = `<span class="chip ${lv}">${CHIP[lv]}</span><span>${esc(msgs.join(' · '))}</span>`;
+    if (r.fixed) html += `<button class="link" data-undo="${r.id}">Rückgängig</button>`;
     if (r.tr.sug) html += `<button class="link" data-apply="${r.id}">${SIDE[r.tr.sug.field]}: „${esc(r.tr.sug.value)}“ übernehmen</button>`;
     if ((lv === 'warn' || lv === 'err') && r.front.trim()) {
       html += `<a class="link" target="_blank" rel="noopener" href="https://translate.google.com/?sl=${$('langFront').value}&tl=${$('langBack').value}&text=${encodeURIComponent(r.front.trim())}&op=translate">Im Google Übersetzer ansehen</a>`;
@@ -868,14 +911,23 @@ details summary { cursor: pointer; font-weight: 700; }
   function paintSummary() {
     if (!review) return;
     const lv = review.map(level);
-    const bad = lv.filter((x) => x === 'warn' || x === 'err').length, wait = lv.filter((x) => x === 'wait').length;
-    $('reviewSummary').textContent = `${review.length} Vokabeln · ${bad ? bad + ' auffällig' : 'alles unauffällig'}` + (wait ? ` · ${wait} werden noch geprüft` : '');
-    $('checkBtn').textContent = checking ? 'Wird geprüft …' : 'Erneut prüfen';
+    const bad = lv.filter((x) => x === 'warn' || x === 'err').length, wait = lv.filter((x) => x === 'wait').length, fixed = lv.filter((x) => x === 'fixed').length;
+    $('reviewSummary').textContent = `${review.length} Vokabeln · ${fixed ? fixed + ' verbessert · ' : ''}${bad ? bad + ' auffällig' : 'nichts auffällig'}` + (wait ? ` · ${wait} werden noch geprüft` : '');
+    $('checkBtn').textContent = checking ? 'Wird geprüft …' : checkLabel(true);
     $('checkBtn').disabled = !!checking;
     updatePreview();
   }
+  function renderRemoved() {
+    $('removedBox').hidden = !removed.length;
+    $('removedSum').textContent = `${removed.length} ${removed.length === 1 ? 'Zeile' : 'Zeilen'} entfernt, weil sie keine Vokabeln sind`;
+    $('removedList').innerHTML = removed.map((t, i) => `<li><span>${esc(t)}</span> <button class="link" data-restore="${i}">Wiederherstellen</button></li>`).join('');
+  }
   function renderReview() {
     $('review').hidden = false;
+    $('reviewNote').textContent = aiOn()
+      ? 'Geprüft mit Gemini. Du kannst alles direkt in den Feldern korrigieren.'
+      : 'Zum Abgleich werden die Vokabeln an den kostenlosen Übersetzer MyMemory geschickt. Offensichtliche Fehler werden automatisch verbessert. Du kannst alles direkt in den Feldern korrigieren.';
+    renderRemoved();
     $('reviewRows').innerHTML = review.map((r) => `
       <div class="rv" data-id="${r.id}">
         <input type="text" id="rv-f-${r.id}" data-f="front" value="${esc(r.front)}" aria-label="Vorderseite">
@@ -892,7 +944,16 @@ details summary { cursor: pointer; font-weight: 700; }
     paintRow(r); paintSummary();
     const tr = await trCheck(r);
     if (v !== r.v || !review || !review.includes(r)) return;
-    r.tr = tr; paintRow(r); paintSummary();
+    if (tr.sug && tr.auto && !r.noAuto) {
+      const f = tr.sug.field;
+      r.fixed = { field: f, from: r[f], to: tr.sug.value };
+      r[f] = tr.sug.value;
+      const inp = document.getElementById((f === 'front' ? 'rv-f-' : 'rv-b-') + r.id);
+      if (inp) inp.value = r[f];
+      r.local = localIssues(r);
+      r.tr = { state: 'ok' };
+    } else r.tr = tr;
+    paintRow(r); paintSummary();
   }
   async function recheckAll() {
     if (!review) return;
@@ -902,10 +963,15 @@ details summary { cursor: pointer; font-weight: 700; }
     const work = async () => { while (queue.length) await checkRow(queue.shift()); };
     try { await Promise.all([work(), work(), work()]); } finally { checking--; paintSummary(); }
   }
+  const JUNK_RE = /^(seite|s\.|page|p\.|pg\.|unit|lektion|kapitel|chapter|lesson|step|übung|exercise|ex\.|nr\.|no\.|lezione|leçon|unidad)\s*\d+[a-z]?\s*$/i;
+  function isJunk(t) { return (t.match(/\p{L}/gu) || []).length < 2 || JUNK_RE.test(t.trim()); }
   function buildReview() {
     const swap = $('swapSides').checked;
-    review = [];
-    $('importText').value.split(/\r?\n/).forEach((line) => {
+    review = []; removed = [];
+    $('importText').value.split(/\r?\n/).forEach((raw) => {
+      if (!raw.trim()) return;
+      if (isJunk(raw)) { removed.push(raw.trim()); return; }
+      const line = raw.replace(/^\s*\d{1,3}[.)]?\s+(?=\p{L})/u, '');
       const res = parseLine(line);
       if (res === null) return;
       let [f, b] = res || [line.trim(), ''];
@@ -920,8 +986,8 @@ details summary { cursor: pointer; font-weight: 700; }
     recheckAll();
   }
   function clearReview() {
-    review = null; $('review').hidden = true; $('reviewRows').innerHTML = '';
-    $('checkBtn').textContent = 'Vokabeln prüfen';
+    review = null; removed = []; $('review').hidden = true; $('reviewRows').innerHTML = '';
+    $('checkBtn').textContent = checkLabel(false);
     updatePreview();
   }
   function setLangsFromOcr() {
@@ -932,19 +998,35 @@ details summary { cursor: pointer; font-weight: 700; }
   setLangsFromOcr();
   $('ocrLang').addEventListener('change', setLangsFromOcr);
   $('swapSides').addEventListener('change', () => { setLangsFromOcr(); if (review) runCheck(); });
-  $('checkBtn').addEventListener('click', () => { if (review) recheckAll(); else runCheck(); });
+  $('checkBtn').addEventListener('click', () => { if (aiOn()) aiCheckText(); else if (review) recheckAll(); else runCheck(); });
   ['langFront', 'langBack'].forEach((id) => $(id).addEventListener('change', () => { if (review) recheckAll(); }));
+  $('removedBox').addEventListener('click', (e) => {
+    const rs = e.target.closest('[data-restore]'); if (!rs || !review) return;
+    const t = removed.splice(+rs.dataset.restore, 1)[0];
+    const res = parseLine(t) || [t, ''];
+    const r = { id: uid(), front: res[0], back: res[1], local: [], tr: { state: 'skip' }, v: 0 };
+    review.push(r); renderReview(); checkRow(r);
+  });
   $('onlyIssues').addEventListener('change', () => { if (review) review.forEach(paintRow); });
   $('reviewRows').addEventListener('change', (e) => {
     const el = e.target.closest('.rv'); if (!el || !e.target.dataset.f || !review) return;
     const r = review.find((x) => x.id === el.dataset.id); if (!r) return;
     r[e.target.dataset.f] = e.target.value.trim();
+    r.fixed = null; r.ai = null; r.aiChecked = false; r.noAuto = true;
     checkRow(r);
   });
   $('reviewRows').addEventListener('click', (e) => {
     if (!review) return;
     const rm = e.target.closest('[data-rm]');
     if (rm) { review = review.filter((x) => x.id !== rm.dataset.rm); if (!review.length) clearReview(); else { renderReview(); } return; }
+    const un = e.target.closest('[data-undo]');
+    if (un) {
+      const r = review.find((x) => x.id === un.dataset.undo); if (!r || !r.fixed) return;
+      r[r.fixed.field] = r.fixed.from;
+      const inp = document.getElementById((r.fixed.field === 'front' ? 'rv-f-' : 'rv-b-') + r.id);
+      if (inp) inp.value = r.fixed.from;
+      r.fixed = null; r.noAuto = true; checkRow(r); return;
+    }
     const ap = e.target.closest('[data-apply]');
     if (ap) {
       const r = review.find((x) => x.id === ap.dataset.apply); if (!r || !r.tr.sug) return;
@@ -954,6 +1036,117 @@ details summary { cursor: pointer; font-weight: 700; }
       checkRow(r);
     }
   });
+
+  /* ---------- KI (Gemini) ---------- */
+  const AI_STORE = 'vokabel-karteikasten-ki';
+  let ai = {};
+  try { ai = JSON.parse(localStorage.getItem(AI_STORE)) || {}; } catch (e) { ai = {}; }
+  const aiOn = () => !!(ai.key && ai.key.trim());
+  const AI_MODELS = ['gemini-flash-latest', 'gemini-3.6-flash', 'gemini-3.5-flash'];
+  const AI_SCHEMA = {
+    type: 'OBJECT',
+    properties: {
+      pairs: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+        front: { type: 'STRING' }, back: { type: 'STRING' }, changed: { type: 'BOOLEAN' }, original: { type: 'STRING' }, note: { type: 'STRING' }
+      }, required: ['front', 'back', 'changed'] } },
+      removed: { type: 'ARRAY', items: { type: 'STRING' } }
+    },
+    required: ['pairs', 'removed']
+  };
+  function checkLabel(again) { return aiOn() ? (again ? 'Mit KI erneut prüfen' : 'Mit KI prüfen') : (again ? 'Erneut prüfen' : 'Vokabeln prüfen'); }
+  function aiPrompt(kind) {
+    const lf = LANG_NAME[$('langFront').value], lb = LANG_NAME[$('langBack').value];
+    return `Du hilfst einem Schüler, Vokabeln für Karteikarten zu erfassen. ${kind === 'image' ? 'Das Bild zeigt eine Vokabelliste aus einem Schulbuch, Arbeitsblatt oder Heft.' : 'Der Text unten stammt aus einer automatischen Texterkennung oder wurde eingetippt und kann Fehler enthalten.'}
+Gib alle Vokabelpaare zurück: "front" auf ${lf}, "back" auf ${lb}. Behalte die Reihenfolge der Vorlage bei.
+Regeln:
+- Lass alles weg, was keine Vokabel ist: Seitenzahlen, Uhrzeiten, Datumsangaben, reine Zahlen, Nummerierungen, Überschriften, Kapitel- und Unit-Namen, Lautschrift, Beispielsätze, Grammatik-Hinweise und Seitenverweise. Liste die weggelassenen Stücke kurz in "removed".
+- Ordne Wort und Übersetzung richtig zu, auch wenn Zeilen verrutscht sind, eine Vokabel über zwei Zeilen geht oder die Spalten vertauscht sind.
+- Korrigiere eindeutige Erkennungs- und Tippfehler (zum Beispiel 0 statt o, rn statt m, fehlende Umlaute oder Akzente). Behalte Zusätze wie "to", Artikel, "sich", "jdn." oder "etw." bei.
+- Übernimm die Übersetzung aus der Vorlage. Ersetze oder ergänze sie nur, wenn sie eindeutig falsch ist oder fehlt.
+- Wenn du an einem Paar etwas korrigiert, ergänzt, zusammengeführt oder neu zugeordnet hast, setze "changed" auf true, schreibe in "original", wie es in der Vorlage stand, und in "note" einen kurzen deutschen Hinweis, was du geändert hast. Sonst "changed": false.
+- Erfinde keine Vokabeln, die nicht in der Vorlage stehen.`;
+  }
+  async function geminiOnce(model, parts) {
+    let res;
+    try {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(ai.key.trim())}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { temperature: 0.1, responseMimeType: 'application/json', responseSchema: AI_SCHEMA } })
+      });
+    } catch (e) { const er = new Error('Die KI ist nicht erreichbar. Prüfe deine Internetverbindung.'); er.fatal = true; throw er; }
+    let j = null; try { j = await res.json(); } catch (e) {}
+    if (!res.ok) {
+      const m = (j && j.error && j.error.message) || '';
+      const er = new Error('');
+      if (res.status === 404 || (res.status === 429 && /limit:\s*0\b/i.test(m))) { er.next = true; er.message = `Das Modell „${model}“ ist mit deinem Schlüssel nicht verfügbar.`; }
+      else if (/api key|API_KEY/i.test(m) || res.status === 401) er.message = 'Der API-Schlüssel ist ungültig. Prüfe ihn in den KI-Einstellungen.';
+      else if (res.status === 429) er.message = 'Das kostenlose KI-Limit ist gerade erreicht. Versuch es in einer Minute nochmal.';
+      else if (res.status === 403) er.message = 'Der API-Schlüssel hat keinen Zugriff auf Gemini.';
+      else if (res.status >= 500) er.message = 'Gemini ist gerade überlastet. Versuch es gleich nochmal.';
+      else er.message = 'Die KI hat einen Fehler gemeldet: ' + (m || res.status);
+      throw er;
+    }
+    const cand = j && j.candidates && j.candidates[0];
+    const txt = ((cand && cand.content && cand.content.parts) || []).filter((x) => !x.thought).map((x) => x.text || '').join('');
+    try { return JSON.parse(txt); } catch (e) { throw new Error('Die Antwort der KI war unvollständig. Versuch es nochmal.'); }
+  }
+  async function gemini(parts) {
+    const models = ai.model && ai.model.trim() ? [ai.model.trim()] : AI_MODELS;
+    let last;
+    for (const m of models) {
+      try { return await geminiOnce(m, parts); }
+      catch (e) { last = e; if (!e.next) throw e; }
+    }
+    throw new Error(last && models.length === 1 ? last.message + ' Trag in den KI-Einstellungen ein anderes Modell ein oder lass das Feld leer.' : 'Kein Gemini-Modell ist mit deinem Schlüssel verfügbar.');
+  }
+  function applyAi(res) {
+    const pairs = (res && Array.isArray(res.pairs) ? res.pairs : []).filter((x) => x && (String(x.front || '').trim() || String(x.back || '').trim()));
+    if (!pairs.length) throw new Error('Die KI hat keine Vokabeln gefunden. Versuche ein schärferes Foto.');
+    review = pairs.map((x) => ({
+      id: uid(), front: String(x.front || '').trim(), back: String(x.back || '').trim(), local: [], tr: { state: 'skip' }, v: 0, aiChecked: true, noAuto: true,
+      ai: x.changed ? { note: String(x.note || '').trim(), original: String(x.original || '').trim() } : null
+    }));
+    removed = (res.removed || []).map((t) => String(t).trim()).filter(Boolean);
+    $('importText').value = review.map((r) => `${r.front} - ${r.back}`).join('\n');
+    review.forEach((r) => { r.local = localIssues(r); });
+    renderReview();
+    return review.length;
+  }
+  function setCheckMsg(text, cls) { const m = $('checkMsg'); m.hidden = !text; m.textContent = text || ''; m.className = 'small check-msg' + (cls ? ' ' + cls : ''); }
+  async function aiCheckText() {
+    const text = review ? review.map((r) => `${r.front} - ${r.back}`).join('\n') : $('importText').value;
+    if (!text.trim() || checking) return;
+    checking++; $('checkBtn').disabled = true; $('checkBtn').textContent = 'KI prüft …'; setCheckMsg('');
+    try {
+      const n = applyAi(await gemini([{ text: aiPrompt('text') + '\n\nVorlage:\n' + text }]));
+      setCheckMsg(`${n} Vokabeln von der KI geprüft.`, '');
+    } catch (e) { setCheckMsg(e.message, 'error'); }
+    finally { checking--; $('checkBtn').textContent = checkLabel(!!review); updatePreview(); }
+  }
+  function updateAiState() {
+    const el = $('aiState');
+    el.textContent = aiOn() ? 'KI aktiv: Gemini liest das Foto, sortiert, korrigiert und filtert die Vokabeln.' : 'Ohne KI: Texterkennung auf dem Gerät. Bessere Ergebnisse bekommst du mit der KI (Einstellungen ganz unten).';
+    el.className = 'small ai-state' + (aiOn() ? ' on' : '');
+    $('ocrLang').closest('.field').querySelector('label').textContent = aiOn() ? 'Sprache der Vokabeln' : 'Sprachen auf dem Foto';
+    if (!checking) $('checkBtn').textContent = checkLabel(!!review);
+    $('aiKey').value = ai.key || ''; $('aiModel').value = ai.model || '';
+  }
+  function saveAi() { try { localStorage.setItem(AI_STORE, JSON.stringify(ai)); } catch (e) {} updateAiState(); }
+  $('aiSave').addEventListener('click', () => { ai = { key: $('aiKey').value.trim(), model: $('aiModel').value.trim() }; saveAi(); toast(aiOn() ? 'KI-Einstellungen gespeichert' : 'Kein Schlüssel eingetragen'); });
+  $('aiRemove').addEventListener('click', () => { ai = {}; saveAi(); $('aiTestMsg').hidden = true; toast('Schlüssel entfernt'); });
+  $('aiTest').addEventListener('click', async () => {
+    ai = { key: $('aiKey').value.trim(), model: $('aiModel').value.trim() }; saveAi();
+    const m = $('aiTestMsg'); m.hidden = false; m.style.color = '';
+    if (!aiOn()) { m.textContent = 'Trag zuerst einen API-Schlüssel ein.'; m.style.color = 'var(--bad)'; return; }
+    m.textContent = 'Teste …';
+    try {
+      const r = await gemini([{ text: 'Antworte nur mit dem JSON. Vorlage:\nthe bridge - die Brucke\nSeite 12' }]);
+      const p0 = r.pairs && r.pairs[0];
+      m.textContent = p0 ? `Funktioniert. Test: „the bridge - die Brucke“ wurde zu „${p0.front} - ${p0.back}“.` : 'Funktioniert.';
+      m.style.color = 'var(--good)';
+    } catch (e) { m.textContent = e.message; m.style.color = 'var(--bad)'; }
+  });
+  updateAiState();
 
   /* ---------- Foto-Import (Texterkennung) ---------- */
   let tessLoading = null;
@@ -968,16 +1161,16 @@ details summary { cursor: pointer; font-weight: 700; }
     });
     return tessLoading;
   }
-  function prepImage(file) {
+  function prepImage(file, max = 2400, filter = true) {
     return new Promise((res, rej) => {
       const url = URL.createObjectURL(file); const img = new Image();
       img.onload = () => {
-        const max = 2400, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+        const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
         const c = document.createElement('canvas');
         c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
         const ctx = c.getContext('2d');
         ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
-        ctx.filter = 'grayscale(1) contrast(1.25)';
+        if (filter) ctx.filter = 'grayscale(1) contrast(1.25)';
         ctx.drawImage(img, 0, 0, c.width, c.height);
         URL.revokeObjectURL(url); res(c);
       };
@@ -1023,6 +1216,23 @@ details summary { cursor: pointer; font-weight: 700; }
     if (prev.src) URL.revokeObjectURL(prev.src);
     prev.src = URL.createObjectURL(f); prev.hidden = false;
     $('ocrBtn').classList.add('busy'); e.target.disabled = true;
+    if (aiOn()) {
+      try {
+        setLangsFromOcr();
+        setP('Die KI liest das Foto … (dauert ein paar Sekunden)', 0.4);
+        const canvas = await prepImage(f, 1600, false);
+        const b64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+        const n = applyAi(await gemini([{ text: aiPrompt('image') }, { inlineData: { mimeType: 'image/jpeg', data: b64 } }]));
+        const fixed = review.filter((r) => r.ai).length;
+        setP(`${n} Vokabeln erkannt` + (fixed ? `, ${fixed} davon verbessert` : '') + (removed.length ? `, ${removed.length} Nicht-Vokabeln entfernt` : '') + '. Kontrolliere die Liste unten.', 1, 'done');
+        $('review').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (err) {
+        setP(err && err.message === 'img' ? 'Das Bild konnte nicht geöffnet werden. Versuche ein JPG- oder PNG-Foto.' : err.message, 0, 'error');
+      } finally {
+        $('ocrBtn').classList.remove('busy'); e.target.disabled = false;
+      }
+      return;
+    }
     let worker = null;
     try {
       setP('Texterkennung wird geladen …', 0);
