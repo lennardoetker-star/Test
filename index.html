@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+<title>Vokabel-Karteikasten</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=Kalam:wght@400;700&display=swap">
+<style>
+/* Layout: a desk surface with one ruled index card (5 × 3) at the centre; tools sit around it in tabs. */
+:root {
+  --desk: #dde4ec;
+  --surface: #eef2f7;
+  --paper: #fffefa;
+  --rule: #bcd2ea;
+  --red-line: #df5a5e;
+  --ink: #1b2838;
+  --muted: #56677b;
+  --line: #c3cedb;
+  --accent: #2c5bc9;
+  --accent-ink: #ffffff;
+  --good: #23784b;
+  --bad: #b8433a;
+  --shadow: 0 1px 2px rgba(27,40,56,.08), 0 10px 28px rgba(27,40,56,.12);
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-hand: "Kalam", "Comic Sans MS", "Segoe Print", cursive;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --desk: #141a22; --surface: #1b232d; --paper: #222b36; --rule: #33475d; --red-line: #e2696c;
+    --ink: #e7edf4; --muted: #9babbd; --line: #314050; --accent: #7ea4ff; --accent-ink: #0f1722;
+    --good: #5cc88f; --bad: #f08174; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --desk: #141a22; --surface: #1b232d; --paper: #222b36; --rule: #33475d; --red-line: #e2696c;
+  --ink: #e7edf4; --muted: #9babbd; --line: #314050; --accent: #7ea4ff; --accent-ink: #0f1722;
+  --good: #5cc88f; --bad: #f08174; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px rgba(0,0,0,.35);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--desk); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -.01em; }
+h2 { font-size: 1.2rem; font-weight: 600; }
+.muted { color: var(--muted); }
+small, .small { font-size: .85rem; }
+
+header.top { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; justify-content: space-between; }
+.brand { display: flex; flex-direction: column; gap: 2px; }
+.brand p { margin: 0; color: var(--muted); font-size: .92rem; }
+.deck-pick { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 0 1 320px; }
+label.lbl { font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+
+select, input[type="text"], textarea {
+  font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line);
+  border-radius: 8px; padding: 9px 11px; width: 100%; min-width: 0;
+}
+textarea { font-family: var(--f-body); resize: vertical; min-height: 180px; line-height: 1.6; }
+select:focus-visible, input:focus-visible, textarea:focus-visible, button:focus-visible, .card:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 2px;
+}
+
+nav.tabs { display: flex; gap: 4px; background: var(--surface); padding: 4px; border-radius: 10px; border: 1px solid var(--line); }
+nav.tabs button {
+  flex: 1; font: inherit; font-weight: 700; border: 0; background: transparent; color: var(--muted);
+  padding: 9px 10px; border-radius: 7px; cursor: pointer;
+}
+nav.tabs button[aria-selected="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+.btn {
+  font: inherit; font-weight: 700; border: 1px solid var(--line); background: var(--paper); color: var(--ink);
+  padding: 10px 16px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; justify-content: center;
+}
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.good { background: var(--good); border-color: var(--good); color: var(--paper); }
+.btn.bad { background: var(--bad); border-color: var(--bad); color: var(--paper); }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--bad); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+kbd { font-family: ui-monospace, monospace; font-size: .75em; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; opacity: .75; }
+
+.panel { display: flex; flex-direction: column; gap: 18px; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 180px; }
+
+/* Leitner boxes */
+.boxes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.box {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.box .n { font-family: var(--f-display); font-weight: 800; font-size: 1.4rem; font-variant-numeric: tabular-nums; line-height: 1; }
+.box .t { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+.box .bar { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.box .bar i { display: block; height: 100%; background: var(--accent); }
+.box:nth-child(5) .bar i { background: var(--good); }
+
+/* Index card */
+.stage { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.progress { width: 100%; max-width: 600px; display: flex; align-items: center; gap: 12px; font-variant-numeric: tabular-nums; }
+.progress .track { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.progress .track i { display: block; height: 100%; background: var(--accent); transition: width .25s; }
+.card { width: 100%; max-width: 600px; aspect-ratio: 5 / 3; perspective: 1400px; cursor: pointer; border-radius: 6px; }
+.card-inner { position: relative; width: 100%; height: 100%; transition: transform .45s cubic-bezier(.3,.7,.2,1); transform-style: preserve-3d; }
+.card.flipped .card-inner { transform: rotateY(180deg); }
+.face {
+  position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  background-color: var(--paper); border-radius: 6px; box-shadow: var(--shadow);
+  background-image:
+    linear-gradient(var(--red-line), var(--red-line)),
+    repeating-linear-gradient(to bottom, transparent 0, transparent 31px, var(--rule) 31px, var(--rule) 32px);
+  background-size: 100% 2px, 100% 100%;
+  background-position: 0 56px, 0 56px;
+  background-repeat: no-repeat, no-repeat;
+  display: flex; flex-direction: column; padding: 14px 22px 18px;
+}
+.face.back { transform: rotateY(180deg); }
+.face .meta { height: 40px; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.face .word {
+  flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; overflow: auto;
+  font-family: var(--f-hand); font-size: clamp(1.5rem, 5vw, 2.4rem); line-height: 1.25; padding-top: 8px; overflow-wrap: anywhere;
+}
+.face.back .word { color: var(--accent); }
+.face .hint { text-align: center; font-size: .82rem; color: var(--muted); }
+.answer { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 600px; }
+.answer .btn { flex: 1 1 200px; padding: 13px 16px; }
+
+.summary { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 600px; }
+.summary .big { font-family: var(--f-display); font-weight: 800; font-size: 2.2rem; font-variant-numeric: tabular-nums; }
+.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 10px; padding: 22px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+
+/* Card list */
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+table { width: 100%; border-collapse: collapse; min-width: 480px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--surface); }
+tr:last-child td { border-bottom: 0; }
+td input[type="text"] { border-color: transparent; background: transparent; padding: 6px 8px; }
+td input[type="text"]:hover { border-color: var(--line); }
+td.num { font-variant-numeric: tabular-nums; text-align: center; width: 56px; }
+td.act { width: 44px; }
+.icon-btn { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 1.1rem; padding: 4px 8px; border-radius: 6px; }
+.icon-btn:hover { color: var(--bad); background: var(--surface); }
+
+.format { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font-size: .92rem; display: flex; flex-direction: column; gap: 6px; }
+.format code { font-family: ui-monospace, Menlo, monospace; font-size: .88em; background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+.preview { font-size: .92rem; }
+.preview.ok { color: var(--good); }
+.preview.warn { color: var(--bad); }
+details summary { cursor: pointer; font-weight: 700; }
+.confirm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--bad); border-radius: 8px; padding: 10px 12px; }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 8px; font-weight: 700; box-shadow: var(--shadow);
+  max-width: calc(100% - 32px);
+}
+@media (max-width: 520px) {
+  .card { aspect-ratio: 4 / 3; }
+  .boxes { gap: 5px; }
+  .box { padding: 6px; }
+  .box .t { font-size: .64rem; letter-spacing: .02em; }
+  .box .n { font-size: 1.15rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-inner, .progress .track i { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Vokabel-Karteikasten</h1>
+      <p>Vokabeln einfügen, Karten umdrehen, mit 5 Fächern wiederholen.</p>
+    </div>
+    <div class="deck-pick">
+      <label class="lbl" for="deckSelect">Stapel</label>
+      <select id="deckSelect"></select>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab-learn" data-tab="learn" aria-selected="true">Lernen</button>
+    <button role="tab" id="tab-cards" data-tab="cards" aria-selected="false">Karten</button>
+    <button role="tab" id="tab-import" data-tab="import" aria-selected="false">Importieren</button>
+  </nav>
+
+  <!-- LERNEN -->
+  <section class="panel" id="view-learn">
+    <div class="boxes" id="boxes"></div>
+    <div id="learnArea"></div>
+  </section>
+
+  <!-- KARTEN -->
+  <section class="panel" id="view-cards" hidden>
+    <div class="row">
+      <div class="field">
+        <label class="lbl" for="deckName">Name des Stapels</label>
+        <input type="text" id="deckName">
+      </div>
+      <button class="btn" id="resetProgress">Fortschritt zurücksetzen</button>
+      <button class="btn danger" id="deleteDeck">Stapel löschen</button>
+    </div>
+    <div id="deleteConfirm" hidden></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Vorderseite</th><th>Rückseite</th><th>Fach</th><th><span class="muted">&nbsp;</span></th></tr></thead>
+        <tbody id="cardRows"></tbody>
+      </table>
+    </div>
+    <div class="row">
+      <div class="field"><label class="lbl" for="newFront">Neue Vorderseite</label><input type="text" id="newFront" placeholder="z. B. the bridge"></div>
+      <div class="field"><label class="lbl" for="newBack">Neue Rückseite</label><input type="text" id="newBack" placeholder="z. B. die Brücke"></div>
+      <button class="btn primary" id="addCard">Karte hinzufügen</button>
+    </div>
+    <details>
+      <summary>Stapel als Text exportieren</summary>
+      <div class="panel" style="margin-top:10px">
+        <textarea id="exportText" readonly></textarea>
+        <div><button class="btn" id="copyExport">Text kopieren</button></div>
+      </div>
+    </details>
+  </section>
+
+  <!-- IMPORT -->
+  <section class="panel" id="view-import" hidden>
+    <div class="format">
+      <strong>So sieht deine Liste aus</strong>
+      <span>Eine Vokabel pro Zeile, Vorderseite und Rückseite getrennt durch <code> - </code>, <code> = </code>, <code>;</code>, <code>,</code> oder Tabulator.</span>
+      <span class="muted">Beispiel: <code>the house - das Haus</code> · <code>la maison;das Haus</code> · Spalten aus Excel direkt einfügen geht auch.</span>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label class="lbl" for="importTarget">Ziel</label>
+        <select id="importTarget"></select>
+      </div>
+      <div class="field" id="newDeckField">
+        <label class="lbl" for="importName">Name des neuen Stapels</label>
+        <input type="text" id="importName" placeholder="z. B. Englisch Unit 4">
+      </div>
+    </div>
+    <div class="field">
+      <label class="lbl" for="importText">Vokabeln</label>
+      <textarea id="importText" placeholder="the bridge - die Brücke&#10;to borrow - (sich) ausleihen&#10;although - obwohl"></textarea>
+    </div>
+    <div class="row" style="align-items:center">
+      <label class="btn" for="importFile">Datei wählen (.txt, .csv)</label>
+      <input type="file" id="importFile" accept=".txt,.csv,.tsv,text/plain,text/csv" hidden>
+      <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="swapSides"> Seiten tauschen</label>
+      <span class="preview" id="importPreview"></span>
+    </div>
+    <div><button class="btn primary" id="doImport" disabled>Importieren</button></div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  const STORE = 'vokabel-karteikasten-v1';
+  const $ = (id) => document.getElementById(id);
+  const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-3);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const newCard = (front, back) => ({ id: uid(), front, back, box: 1, right: 0, wrong: 0 });
+
+  function sampleState() {
+    const pairs = [
+      ['the bridge', 'die Brücke'], ['to borrow', '(sich) ausleihen'], ['although', 'obwohl'],
+      ['the knowledge', 'das Wissen'], ['to improve', 'verbessern'], ['the weather', 'das Wetter'],
+      ['reliable', 'zuverlässig'], ['to avoid', 'vermeiden'], ['the neighbour', 'der Nachbar / die Nachbarin'],
+      ['immediately', 'sofort'], ['to suggest', 'vorschlagen'], ['the advantage', 'der Vorteil']
+    ];
+    const id = uid();
+    return { decks: [{ id, name: 'Beispiel: Englisch', cards: pairs.map(([f, b]) => newCard(f, b)) }], current: id, dir: 'ab', size: '20' };
+  }
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem(STORE));
+      if (s && Array.isArray(s.decks)) return s;
+    } catch (e) {}
+    return sampleState();
+  }
+  function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {} }
+
+  let state = load();
+  if (!state.decks.find((d) => d.id === state.current)) state.current = state.decks[0] ? state.decks[0].id : null;
+  let session = null;
+  let tab = 'learn';
+
+  const deck = () => state.decks.find((d) => d.id === state.current) || null;
+
+  /* ---------- toast ---------- */
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2400);
+  }
+
+  /* ---------- parsing ---------- */
+  const SEPS = ['\t', ' = ', ' – ', ' — ', ' - ', ';', '=', ',', ':', '-'];
+  const unq = (s) => s.trim().replace(/^"(.*)"$/, '$1').trim();
+  function parseLine(line) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) return null;
+    for (const s of SEPS) {
+      const i = t.indexOf(s);
+      if (i > 0) {
+        const f = unq(t.slice(0, i)), b = unq(t.slice(i + s.length));
+        if (f && b) return [f, b];
+      }
+    }
+    return false;
+  }
+  function parse(text) {
+    const ok = [], bad = [];
+    text.split(/\r?\n/).forEach((l) => { const r = parseLine(l); if (r === null) return; if (r) ok.push(r); else bad.push(l.trim()); });
+    return { ok, bad };
+  }
+
+  /* ---------- deck select ---------- */
+  function renderDeckSelect() {
+    const sel = $('deckSelect');
+    sel.innerHTML = state.decks.length
+      ? state.decks.map((d) => `<option value="${d.id}"${d.id === state.current ? ' selected' : ''}>${esc(d.name)} (${d.cards.length})</option>`).join('')
+      : '<option value="">Noch kein Stapel</option>';
+    sel.disabled = !state.decks.length;
+    const tgt = $('importTarget');
+    const prev = tgt.value;
+    tgt.innerHTML = '<option value="__new">Neuer Stapel</option>' +
+      state.decks.map((d) => `<option value="${d.id}">Hinzufügen zu: ${esc(d.name)}</option>`).join('');
+    tgt.value = [...tgt.options].some((o) => o.value === prev) ? prev : '__new';
+    $('newDeckField').hidden = tgt.value !== '__new';
+  }
+
+  /* ---------- tabs ---------- */
+  function setTab(t) {
+    tab = t;
+    document.querySelectorAll('nav.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+    $('view-learn').hidden = t !== 'learn';
+    $('view-cards').hidden = t !== 'cards';
+    $('view-import').hidden = t !== 'import';
+    render();
+  }
+
+  /* ---------- learn ---------- */
+  function renderBoxes() {
+    const d = deck();
+    const counts = [0, 0, 0, 0, 0];
+    if (d) d.cards.forEach((c) => counts[Math.min(5, Math.max(1, c.box)) - 1]++);
+    const total = d ? d.cards.length : 0;
+    const names = ['Neu / falsch', 'Fach 2', 'Fach 3', 'Fach 4', 'Sitzt'];
+    $('boxes').innerHTML = counts.map((n, i) => `
+      <div class="box" title="Fach ${i + 1}: ${n} Karten">
+        <span class="t">${names[i]}</span>
+        <span class="n">${n}</span>
+        <span class="bar"><i style="width:${total ? Math.round(n / total * 100) : 0}%"></i></span>
+      </div>`).join('');
+  }
+
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+  function startSession() {
+    const d = deck(); if (!d || !d.cards.length) return;
+    const cards = shuffle([...d.cards]).sort((a, b) => a.box - b.box);
+    const n = state.size === 'all' ? cards.length : Math.min(+state.size, cards.length);
+    session = {
+      deckId: d.id,
+      queue: cards.slice(0, n).map((c) => ({ id: c.id, rev: state.dir === 'ba' || (state.dir === 'mix' && Math.random() < .5), tries: 0 })),
+      pos: 0, flipped: false, total: n, firstTry: 0, mistakes: 0
+    };
+    renderLearn();
+    const c = document.querySelector('.card'); if (c) c.focus();
+  }
+
+  function answer(known) {
+    if (!session || !session.flipped) return;
+    const d = deck(); const item = session.queue[session.pos];
+    const c = d && d.cards.find((x) => x.id === item.id);
+    if (c) {
+      if (known) { c.box = Math.min(5, c.box + 1); c.right++; if (item.tries === 0) session.firstTry++; }
+      else { c.box = 1; c.wrong++; session.mistakes++; session.queue.push({ id: item.id, rev: item.rev, tries: item.tries + 1 }); }
+      item.tries++;
+      save();
+    }
+    session.pos++; session.flipped = false;
+    renderBoxes(); renderLearn(); renderDeckSelect();
+    const card = document.querySelector('.card'); if (card) card.focus();
+  }
+
+  function flip() {
+    if (!session) return;
+    session.flipped = !session.flipped;
+    const card = document.querySelector('.card');
+    if (card) card.classList.toggle('flipped', session.flipped);
+    const ans = document.querySelector('.answer');
+    if (ans) ans.querySelectorAll('.btn').forEach((b) => { b.disabled = !session.flipped; });
+  }
+
+  function renderLearn() {
+    const area = $('learnArea');
+    const d = deck();
+    if (!d) {
+      area.innerHTML = `<div class="empty"><h2>Noch keine Vokabeln</h2><p class="muted" style="margin:0">Füge deine erste Liste unter „Importieren“ ein.</p><button class="btn primary" data-go="import">Vokabeln importieren</button></div>`;
+      return;
+    }
+    if (!d.cards.length) {
+      area.innerHTML = `<div class="empty"><h2>Dieser Stapel ist leer</h2><p class="muted" style="margin:0">Importiere eine Liste oder lege unter „Karten“ einzelne Karten an.</p><button class="btn primary" data-go="import">Vokabeln importieren</button></div>`;
+      return;
+    }
+    if (session && session.deckId !== d.id) session = null;
+
+    if (!session) {
+      area.innerHTML = `
+        <div class="panel">
+          <div class="row">
+            <div class="field">
+              <label class="lbl" for="dirSel">Abfragerichtung</label>
+              <select id="dirSel">
+                <option value="ab">Vorderseite → Rückseite</option>
+                <option value="ba">Rückseite → Vorderseite</option>
+                <option value="mix">Gemischt</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="lbl" for="sizeSel">Karten pro Runde</label>
+              <select id="sizeSel">
+                <option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="all">Alle (${d.cards.length})</option>
+              </select>
+            </div>
+            <button class="btn primary" id="startBtn">Runde starten</button>
+          </div>
+          <p class="muted small" style="margin:0">Karten aus den unteren Fächern kommen zuerst. Gewusst: ein Fach weiter. Nicht gewusst: zurück in Fach 1 und später in der Runde nochmal.</p>
+        </div>`;
+      $('dirSel').value = state.dir; $('sizeSel').value = state.size;
+      return;
+    }
+
+    if (session.pos >= session.queue.length) {
+      const pct = session.total ? Math.round(session.firstTry / session.total * 100) : 0;
+      area.innerHTML = `
+        <div class="stage"><div class="summary">
+          <span class="lbl">Runde geschafft</span>
+          <span class="big">${session.firstTry} / ${session.total}</span>
+          <span>beim ersten Versuch gewusst (${pct} %). ${session.mistakes ? `${session.mistakes}× nachgelernt.` : 'Keine Fehler.'}</span>
+          <div class="row"><button class="btn primary" id="startBtn">Nächste Runde</button><button class="btn ghost" id="endBtn">Zur Übersicht</button></div>
+        </div></div>`;
+      return;
+    }
+
+    const item = session.queue[session.pos];
+    const c = d.cards.find((x) => x.id === item.id);
+    if (!c) { session.pos++; return renderLearn(); }
+    const q = item.rev ? c.back : c.front, a = item.rev ? c.front : c.back;
+    const done = session.pos, all = session.queue.length;
+    area.innerHTML = `
+      <div class="stage">
+        <div class="progress"><span class="small muted">${done} / ${all}</span><span class="track"><i style="width:${Math.round(done / all * 100)}%"></i></span><button class="btn ghost small" id="endBtn" style="padding:6px 10px">Beenden</button></div>
+        <div class="card${session.flipped ? ' flipped' : ''}" tabindex="0" role="button" aria-label="Karte umdrehen">
+          <div class="card-inner">
+            <div class="face front">
+              <div class="meta"><span>${item.rev ? 'Rückseite' : 'Vorderseite'}</span><span>Fach ${c.box}${item.tries ? ' · Wiederholung' : ''}</span></div>
+              <div class="word">${esc(q)}</div>
+              <div class="hint">Antippen oder <kbd>Leertaste</kbd> zum Umdrehen</div>
+            </div>
+            <div class="face back">
+              <div class="meta"><span>${esc(q)}</span><span>Lösung</span></div>
+              <div class="word">${esc(a)}</div>
+              <div class="hint">Gewusst? Wähle unten.</div>
+            </div>
+          </div>
+        </div>
+        <div class="answer">
+          <button class="btn bad" id="noBtn"${session.flipped ? '' : ' disabled'}>Nicht gewusst <kbd>←</kbd></button>
+          <button class="btn good" id="yesBtn"${session.flipped ? '' : ' disabled'}>Gewusst <kbd>→</kbd></button>
+        </div>
+      </div>`;
+  }
+
+  /* ---------- cards view ---------- */
+  function renderCards() {
+    const d = deck();
+    $('deckName').value = d ? d.name : '';
+    ['deckName', 'resetProgress', 'deleteDeck', 'newFront', 'newBack', 'addCard'].forEach((id) => { $(id).disabled = !d; });
+    $('cardRows').innerHTML = d && d.cards.length
+      ? d.cards.map((c) => `<tr data-id="${c.id}">
+          <td><input type="text" data-f="front" value="${esc(c.front)}" aria-label="Vorderseite"></td>
+          <td><input type="text" data-f="back" value="${esc(c.back)}" aria-label="Rückseite"></td>
+          <td class="num">${c.box}</td>
+          <td class="act"><button class="icon-btn" data-del="${c.id}" aria-label="Karte löschen" title="Karte löschen">✕</button></td>
+        </tr>`).join('')
+      : `<tr><td colspan="4" class="muted">Keine Karten. Füge unten eine hinzu oder importiere eine Liste.</td></tr>`;
+    $('exportText').value = d ? d.cards.map((c) => `${c.front} - ${c.back}`).join('\n') : '';
+    $('deleteConfirm').hidden = true;
+  }
+
+  /* ---------- import ---------- */
+  function updatePreview() {
+    const { ok, bad } = parse($('importText').value);
+    const p = $('importPreview');
+    if (!ok.length && !bad.length) { p.textContent = ''; p.className = 'preview'; }
+    else if (bad.length) { p.textContent = `${ok.length} Vokabeln erkannt, ${bad.length} Zeile(n) ohne Trennzeichen werden übersprungen.`; p.className = 'preview warn'; }
+    else { p.textContent = `${ok.length} Vokabeln erkannt.`; p.className = 'preview ok'; }
+    $('doImport').disabled = !ok.length;
+  }
+
+  function doImport() {
+    let { ok } = parse($('importText').value);
+    if (!ok.length) return;
+    if ($('swapSides').checked) ok = ok.map(([a, b]) => [b, a]);
+    const target = $('importTarget').value;
+    let d;
+    if (target === '__new') {
+      const name = $('importName').value.trim() || `Stapel ${state.decks.length + 1}`;
+      d = { id: uid(), name, cards: [] };
+      state.decks.push(d);
+    } else {
+      d = state.decks.find((x) => x.id === target);
+    }
+    const existing = new Set(d.cards.map((c) => c.front + '\u0000' + c.back));
+    let added = 0;
+    ok.forEach(([f, b]) => { const k = f + '\u0000' + b; if (!existing.has(k)) { d.cards.push(newCard(f, b)); existing.add(k); added++; } });
+    state.current = d.id; session = null;
+    save();
+    $('importText').value = ''; $('importName').value = ''; $('importFile').value = '';
+    updatePreview();
+    toast(`${added} Vokabeln in „${d.name}“ importiert` + (ok.length > added ? ` (${ok.length - added} doppelt)` : ''));
+    renderDeckSelect();
+    setTab('learn');
+  }
+
+  function render() {
+    renderDeckSelect();
+    renderBoxes();
+    if (tab === 'learn') renderLearn();
+    if (tab === 'cards') renderCards();
+    if (tab === 'import') updatePreview();
+  }
+
+  /* ---------- events ---------- */
+  document.querySelector('nav.tabs').addEventListener('click', (e) => { const b = e.target.closest('button[data-tab]'); if (b) setTab(b.dataset.tab); });
+  $('deckSelect').addEventListener('change', (e) => { state.current = e.target.value; session = null; save(); render(); });
+
+  $('learnArea').addEventListener('click', (e) => {
+    if (e.target.closest('[data-go]')) return setTab(e.target.closest('[data-go]').dataset.go);
+    if (e.target.closest('#startBtn')) return startSession();
+    if (e.target.closest('#endBtn')) { session = null; return renderLearn(); }
+    if (e.target.closest('#yesBtn')) return answer(true);
+    if (e.target.closest('#noBtn')) return answer(false);
+    if (e.target.closest('.card')) return flip();
+  });
+  $('learnArea').addEventListener('change', (e) => {
+    if (e.target.id === 'dirSel') { state.dir = e.target.value; save(); }
+    if (e.target.id === 'sizeSel') { state.size = e.target.value; save(); }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (tab !== 'learn' || !session || session.pos >= session.queue.length) return;
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (e.key === ' ' || e.key === 'Enter') { if (tag === 'button' && !e.target.classList.contains('card')) return; e.preventDefault(); flip(); }
+    else if (e.key === 'ArrowRight' || e.key === '2') { e.preventDefault(); answer(true); }
+    else if (e.key === 'ArrowLeft' || e.key === '1') { e.preventDefault(); answer(false); }
+  });
+
+  $('deckName').addEventListener('input', (e) => { const d = deck(); if (!d) return; d.name = e.target.value || 'Ohne Namen'; save(); renderDeckSelect(); });
+  $('cardRows').addEventListener('change', (e) => {
+    const tr = e.target.closest('tr[data-id]'); const d = deck(); if (!tr || !d) return;
+    const c = d.cards.find((x) => x.id === tr.dataset.id);
+    const v = e.target.value.trim();
+    if (c && v) { c[e.target.dataset.f] = v; save(); toast('Gespeichert'); } else if (c) e.target.value = c[e.target.dataset.f];
+  });
+  $('cardRows').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-del]'); const d = deck(); if (!b || !d) return;
+    d.cards = d.cards.filter((c) => c.id !== b.dataset.del); session = null; save(); renderCards(); renderBoxes(); renderDeckSelect();
+  });
+  function addCard() {
+    const d = deck(); const f = $('newFront').value.trim(), b = $('newBack').value.trim();
+    if (!d) return;
+    if (!f || !b) { toast('Bitte Vorder- und Rückseite ausfüllen'); return; }
+    d.cards.push(newCard(f, b)); save();
+    $('newFront').value = ''; $('newBack').value = ''; $('newFront').focus();
+    renderCards(); renderBoxes(); renderDeckSelect();
+  }
+  $('addCard').addEventListener('click', addCard);
+  $('newBack').addEventListener('keydown', (e) => { if (e.key === 'Enter') addCard(); });
+  $('resetProgress').addEventListener('click', () => {
+    const d = deck(); if (!d) return;
+    d.cards.forEach((c) => { c.box = 1; c.right = 0; c.wrong = 0; }); session = null; save(); renderCards(); renderBoxes(); toast('Alle Karten zurück in Fach 1');
+  });
+  $('deleteDeck').addEventListener('click', () => {
+    const d = deck(); if (!d) return;
+    const box = $('deleteConfirm');
+    box.innerHTML = `<div class="confirm"><span>„${esc(d.name)}“ mit ${d.cards.length} Karten endgültig löschen?</span><button class="btn bad" id="confirmDel">Löschen</button><button class="btn ghost" id="cancelDel">Abbrechen</button></div>`;
+    box.hidden = false;
+  });
+  $('deleteConfirm').addEventListener('click', (e) => {
+    if (e.target.id === 'cancelDel') { $('deleteConfirm').hidden = true; return; }
+    if (e.target.id === 'confirmDel') {
+      const name = deck().name;
+      state.decks = state.decks.filter((d) => d.id !== state.current);
+      state.current = state.decks[0] ? state.decks[0].id : null; session = null; save(); render(); toast(`„${name}“ gelöscht`);
+    }
+  });
+  $('copyExport').addEventListener('click', () => {
+    const ta = $('exportText');
+    const fallback = () => { ta.focus(); ta.select(); toast('Text markiert, jetzt mit Strg+C kopieren'); };
+    try { navigator.clipboard.writeText(ta.value).then(() => toast('Kopiert'), fallback); } catch (e) { fallback(); }
+  });
+
+  $('importText').addEventListener('input', updatePreview);
+  $('importTarget').addEventListener('change', (e) => { $('newDeckField').hidden = e.target.value !== '__new'; });
+  $('importFile').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      $('importText').value = String(r.result);
+      if (!$('importName').value) $('importName').value = f.name.replace(/\.[^.]+$/, '');
+      updatePreview();
+    };
+    r.readAsText(f);
+  });
+  $('doImport').addEventListener('click', doImport);
+
+  render();
+})();
+</script>
+</body>
+</html>
