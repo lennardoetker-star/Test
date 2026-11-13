@@ -40,6 +40,7 @@ body{margin:0;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none
   --accent-ink: #ffffff;
   --good: #23784b;
   --bad: #b8433a;
+  --warn: #a35a00;
   --shadow: 0 1px 2px rgba(27,40,56,.08), 0 10px 28px rgba(27,40,56,.12);
   --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
@@ -49,14 +50,14 @@ body{margin:0;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none
   :root:not([data-theme="light"]) {
     --desk: #141a22; --surface: #1b232d; --paper: #222b36; --rule: #33475d; --red-line: #e2696c;
     --ink: #e7edf4; --muted: #9babbd; --line: #314050; --accent: #7ea4ff; --accent-ink: #0f1722;
-    --good: #5cc88f; --bad: #f08174; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px rgba(0,0,0,.35);
+    --good: #5cc88f; --bad: #f08174; --warn: #f2b25c; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px rgba(0,0,0,.35);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --desk: #141a22; --surface: #1b232d; --paper: #222b36; --rule: #33475d; --red-line: #e2696c;
   --ink: #e7edf4; --muted: #9babbd; --line: #314050; --accent: #7ea4ff; --accent-ink: #0f1722;
-  --good: #5cc88f; --bad: #f08174; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px rgba(0,0,0,.35);
+  --good: #5cc88f; --bad: #f08174; --warn: #f2b25c; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px rgba(0,0,0,.35);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -200,6 +201,16 @@ details summary { cursor: pointer; font-weight: 700; }
 .ocr-status.done { color: var(--good); }
 #ocrPreview { max-width: 100%; max-height: 220px; object-fit: contain; align-self: flex-start; border-radius: 6px; border: 1px solid var(--line); }
 .btn.busy { opacity: .55; pointer-events: none; }
+.review { display: flex; flex-direction: column; gap: 8px; }
+.review-head { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; align-items: center; font-weight: 700; }
+.review-head label { font-weight: 400; display: flex; gap: 6px; align-items: center; font-size: .9rem; }
+.rv { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) auto; gap: 6px; align-items: center; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+.rv.lvl-warn { border-color: var(--warn); }
+.rv.lvl-err { border-color: var(--bad); }
+.rv-status { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: .86rem; color: var(--muted); padding-inline: 2px; }
+.chip { font-weight: 700; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; padding: 1px 8px; border-radius: 999px; border: 1.5px solid currentColor; }
+.chip.ok { color: var(--good); } .chip.warn { color: var(--warn); } .chip.err { color: var(--bad); } .chip.wait { color: var(--muted); }
+.link { border: 0; background: transparent; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 2px; }
 @media (hover: none) { kbd { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   .card-inner, .progress .track i { transition: none; }
@@ -314,6 +325,22 @@ details summary { cursor: pointer; font-weight: 700; }
       <input type="file" id="importFile" accept=".txt,.csv,.tsv,text/plain,text/csv" hidden>
       <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="swapSides"> Seiten tauschen</label>
       <span class="preview" id="importPreview"></span>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label class="lbl" for="langFront">Sprache Vorderseite</label>
+        <select id="langFront"><option value="en">Englisch</option><option value="fr">Französisch</option><option value="es">Spanisch</option><option value="la">Latein</option><option value="it">Italienisch</option><option value="de">Deutsch</option></select>
+      </div>
+      <div class="field">
+        <label class="lbl" for="langBack">Sprache Rückseite</label>
+        <select id="langBack"><option value="de">Deutsch</option><option value="en">Englisch</option><option value="fr">Französisch</option><option value="es">Spanisch</option><option value="la">Latein</option><option value="it">Italienisch</option></select>
+      </div>
+      <button class="btn" id="checkBtn" disabled>Vokabeln prüfen</button>
+    </div>
+    <div class="review" id="review" hidden>
+      <div class="review-head"><span id="reviewSummary"></span><label><input type="checkbox" id="onlyIssues"> Nur auffällige zeigen</label></div>
+      <div class="review" id="reviewRows"></div>
+      <p class="small muted" style="margin:0">Zum Abgleich werden die Vokabeln an den kostenlosen Übersetzer MyMemory geschickt. Du kannst alles direkt in den Feldern korrigieren.</p>
     </div>
     <div><button class="btn primary" id="doImport" disabled>Importieren</button></div>
   </section>
@@ -566,12 +593,19 @@ details summary { cursor: pointer; font-weight: 700; }
     else if (bad.length) { p.textContent = `${ok.length} Vokabeln erkannt, ${bad.length} Zeile(n) ohne Trennzeichen werden übersprungen.`; p.className = 'preview warn'; }
     else { p.textContent = `${ok.length} Vokabeln erkannt.`; p.className = 'preview ok'; }
     $('doImport').disabled = !ok.length;
+    $('checkBtn').disabled = !!checking || (!ok.length && !bad.length);
+    if (review) {
+      const ready = review.filter((r) => r.front.trim() && r.back.trim()).length;
+      $('doImport').disabled = !ready;
+      p.textContent = `${ready} Vokabeln bereit zum Import.`; p.className = 'preview ok';
+    }
   }
 
   function doImport() {
-    let { ok } = parse($('importText').value);
+    let ok;
+    if (review) ok = review.filter((r) => r.front.trim() && r.back.trim()).map((r) => [r.front.trim(), r.back.trim()]);
+    else { ok = parse($('importText').value).ok; if ($('swapSides').checked) ok = ok.map(([a, b]) => [b, a]); }
     if (!ok.length) return;
-    if ($('swapSides').checked) ok = ok.map(([a, b]) => [b, a]);
     const target = $('importTarget').value;
     let d;
     if (target === '__new') {
@@ -587,7 +621,7 @@ details summary { cursor: pointer; font-weight: 700; }
     state.current = d.id; session = null;
     save();
     $('importText').value = ''; $('importName').value = ''; $('importFile').value = '';
-    updatePreview();
+    clearReview();
     toast(`${added} Vokabeln in „${d.name}“ importiert` + (ok.length > added ? ` (${ok.length - added} doppelt)` : ''));
     renderDeckSelect();
     setTab('learn');
@@ -671,7 +705,7 @@ details summary { cursor: pointer; font-weight: 700; }
     try { navigator.clipboard.writeText(ta.value).then(() => toast('Kopiert'), fallback); } catch (e) { fallback(); }
   });
 
-  $('importText').addEventListener('input', updatePreview);
+  $('importText').addEventListener('input', () => { if (review) clearReview(); else updatePreview(); });
   $('importTarget').addEventListener('change', (e) => { $('newDeckField').hidden = e.target.value !== '__new'; });
   $('importFile').addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
@@ -684,6 +718,242 @@ details summary { cursor: pointer; font-weight: 700; }
     r.readAsText(f);
   });
   $('doImport').addEventListener('click', doImport);
+
+  /* ---------- Vokabeln prüfen ---------- */
+  let review = null, trBlocked = '', checking = 0;
+  const CHIP = { ok: 'Passt', warn: 'Prüfen', err: 'Fehler', wait: 'Prüfe …' };
+  const SIDE = { front: 'Vorderseite', back: 'Rückseite' };
+  const ARTICLES = {
+    de: ['der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einen', 'sich'],
+    en: ['to', 'the', 'a', 'an'],
+    fr: ['le', 'la', 'les', 'l', 'un', 'une', 'se', 's', 'des'],
+    es: ['el', 'la', 'los', 'las', 'un', 'una', 'se'],
+    it: ['il', 'lo', 'la', 'i', 'gli', 'le', 'l', 'un', 'una', 'uno'],
+    la: []
+  };
+  const FILL = new Set(['sb', 'sth', 'sby', 'sthg', 'somebody', 'something', 'etw', 'etwas', 'jdn', 'jdm', 'jmd', 'jmdn', 'jmdm', 'jemanden', 'jemandem', 'qn', 'qc', 'qch', 'algo', 'alguien']);
+  const OCR_LANG = { eng: 'en', fra: 'fr', spa: 'es', lat: 'la', ita: 'it', deu: 'de' };
+
+  function norm(str, lang) {
+    const t = String(str).toLowerCase().replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/[.,;:!?"„“”«»'’`´\-–—\/…]/g, ' ');
+    let w = t.split(/\s+/).filter((x) => x && !FILL.has(x));
+    const arts = ARTICLES[lang] || [];
+    while (w.length > 1 && arts.includes(w[0])) w.shift();
+    return w.join(' ');
+  }
+  function alts(str, lang) {
+    const out = String(str).split(/[,;\/]|\s+(?:oder|or|ou|o)\s+/i).map((x) => norm(x, lang)).filter(Boolean);
+    const whole = norm(str, lang); if (whole && !out.includes(whole)) out.push(whole);
+    return out;
+  }
+  function lev(a, b) {
+    const m = a.length, n = b.length; let prev = Array.from({ length: n + 1 }, (_, j) => j);
+    for (let i = 1; i <= m; i++) {
+      const cur = [i];
+      for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return prev[n];
+  }
+  function sim(a, b) {
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    if (Math.min(a.length, b.length) >= 3 && (a.includes(b) || b.includes(a))) return 0.96;
+    return 1 - lev(a, b) / Math.max(a.length, b.length);
+  }
+  function closest(cands, target, lang) {
+    let best = { cand: '', score: 0 };
+    const ts = alts(target, lang);
+    cands.forEach((c) => alts(c, lang).forEach((a) => ts.forEach((t) => { const sc = sim(a, t); if (sc > best.score) best = { cand: c, score: sc }; })));
+    return best;
+  }
+  function fitSuggestion(orig, cand, lang) {
+    let c = cand.trim().replace(/[.!?]+$/, '');
+    if (lang !== 'de' && /^\p{Ll}/u.test(orig.trim())) c = c.charAt(0).toLowerCase() + c.slice(1);
+    const m = orig.trim().match(/^(\S+)\s+/);
+    if (m && (ARTICLES[lang] || []).includes(m[1].toLowerCase()) && !c.toLowerCase().startsWith(m[1].toLowerCase() + ' ')) c = m[0] + c;
+    return c;
+  }
+
+  const trCache = new Map();
+  async function translate(q, from, to) {
+    const key = from + '|' + to + '|' + q;
+    if (trCache.has(key)) return trCache.get(key);
+    let res;
+    try { res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(q)}&langpair=${from}|${to}`); }
+    catch (e) { throw new Error('net'); }
+    if (res.status === 429) throw new Error('quota');
+    if (!res.ok) throw new Error('net');
+    const j = await res.json();
+    if (j.quotaFinished || String(j.responseStatus) === '429') throw new Error('quota');
+    if (String(j.responseStatus) !== '200') throw new Error('net');
+    const out = [];
+    const add = (t) => { t = String(t || '').trim(); if (t && !/MYMEMORY/i.test(t) && !out.some((x) => x.toLowerCase() === t.toLowerCase())) out.push(t); };
+    add(j.responseData && j.responseData.translatedText);
+    (Array.isArray(j.matches) ? j.matches : []).forEach((m) => add(m.translation));
+    const r = out.slice(0, 6);
+    trCache.set(key, r);
+    return r;
+  }
+
+  function localIssues(r) {
+    const out = [];
+    const lf = $('langFront').value, lb = $('langBack').value;
+    if (!r.front.trim() || !r.back.trim()) { out.push(['err', 'Eine Seite ist leer. Trag die fehlende Seite ein.']); return out; }
+    ['front', 'back'].forEach((f) => {
+      const v = r[f];
+      if (/[|\\{}\[\]_~@#$%^*<>©®™§¢£¥¤°]/.test(v)) out.push(['warn', `Seltsame Zeichen auf der ${SIDE[f]}`]);
+      if (/\p{L}\d|\d\p{L}/u.test(v)) out.push(['warn', `Ziffer im Wort auf der ${SIDE[f]} (z. B. 0 statt o, 1 statt l)`]);
+      if (/\p{Ll}\p{Lu}/u.test(v)) out.push(['warn', `Groß-/Kleinschreibung auf der ${SIDE[f]} ungewöhnlich`]);
+      if (v.length > 50 || /\s[-–=]\s|\t/.test(v)) out.push(['warn', `${SIDE[f]} enthält evtl. zwei Vokabeln`]);
+    });
+    if (lf !== lb && norm(r.front, lf) === norm(r.back, lb)) out.push(['warn', 'Beide Seiten sind gleich']);
+    const de = /^(der|die|das)\s/i;
+    if (lf !== 'de' && lb === 'de' && de.test(r.front.trim()) && !de.test(r.back.trim())) out.push(['warn', 'Seiten vertauscht?']);
+    const key = norm(r.front, lf) + '|' + norm(r.back, lb);
+    if (review.filter((x) => norm(x.front, lf) + '|' + norm(x.back, lb) === key).length > 1) out.push(['warn', 'Doppelt in der Liste']);
+    return out;
+  }
+
+  function sugg(field, cand, lang, r, msg) {
+    const value = fitSuggestion(r[field], cand, lang);
+    if (norm(value, lang) === norm(r[field], lang)) return { state: 'ok', msg: 'Übersetzer bestätigt' };
+    return { state: 'warn', msg, sug: { field, value } };
+  }
+  async function trCheck(r) {
+    const lf = $('langFront').value, lb = $('langBack').value;
+    if (!r.front.trim() || !r.back.trim() || lf === lb) return { state: 'skip' };
+    if (trBlocked) return { state: 'off', msg: trBlocked };
+    if (r.front.length > 120 || r.back.length > 120) return { state: 'skip' };
+    try {
+      const fwd = await translate(r.front.trim(), lf, lb);
+      const nb = closest(fwd, r.back, lb);
+      if (nb.score >= 0.95) return { state: 'ok', msg: 'Übersetzer bestätigt' };
+      // Fast gleich wie die Übersetzung: vermutlich Tipp- oder Erkennungsfehler auf der Rückseite
+      if (nb.score >= 0.6) return sugg('back', nb.cand, lb, r, 'Rückseite evtl. falsch erkannt oder geschrieben');
+      const rev = await translate(r.back.trim(), lb, lf);
+      const nf = closest(rev, r.front, lf);
+      if (nf.score >= 0.95) return { state: 'ok', msg: 'Übersetzer bestätigt' };
+      if (nf.score >= 0.5) return sugg('front', nf.cand, lf, r, 'Vorderseite evtl. falsch erkannt oder geschrieben');
+      const unknown = !fwd.length || fwd.every((c) => sim(norm(c, lb), norm(r.front, lf)) >= 0.9);
+      if (unknown) return { state: 'warn', msg: `Der Übersetzer kennt „${r.front.trim()}“ nicht. Evtl. falsch erkannt.` };
+      return sugg('back', fwd[0], lb, r, `Übersetzer sagt „${fwd[0]}“. Passt deine Übersetzung?`);
+    } catch (e) {
+      if (e.message === 'quota') trBlocked = 'Übersetzer-Limit für heute erreicht, nur Grundprüfung';
+      return { state: 'off', msg: e.message === 'quota' ? trBlocked : 'Übersetzer nicht erreichbar, nur Grundprüfung' };
+    }
+  }
+
+  function level(r) {
+    if (r.local.some((x) => x[0] === 'err')) return 'err';
+    if (r.local.length || r.tr.state === 'warn') return 'warn';
+    if (r.tr.state === 'wait') return 'wait';
+    return 'ok';
+  }
+  function paintRow(r) {
+    const el = document.querySelector(`.rv[data-id="${r.id}"]`); if (!el) return;
+    const lv = level(r);
+    el.className = 'rv lvl-' + lv;
+    el.hidden = $('onlyIssues').checked && lv === 'ok';
+    const msgs = r.local.map((x) => x[1]);
+    if (r.tr.msg && !(lv !== 'ok' && r.tr.state === 'ok')) msgs.push(r.tr.msg);
+    if (!msgs.length) msgs.push(lv === 'wait' ? 'Wird mit dem Übersetzer abgeglichen' : 'Keine Auffälligkeiten');
+    let html = `<span class="chip ${lv}">${CHIP[lv]}</span><span>${esc(msgs.join(' · '))}</span>`;
+    if (r.tr.sug) html += `<button class="link" data-apply="${r.id}">${SIDE[r.tr.sug.field]}: „${esc(r.tr.sug.value)}“ übernehmen</button>`;
+    if ((lv === 'warn' || lv === 'err') && r.front.trim()) {
+      html += `<a class="link" target="_blank" rel="noopener" href="https://translate.google.com/?sl=${$('langFront').value}&tl=${$('langBack').value}&text=${encodeURIComponent(r.front.trim())}&op=translate">Im Google Übersetzer ansehen</a>`;
+    }
+    el.querySelector('.rv-status').innerHTML = html;
+  }
+  function paintSummary() {
+    if (!review) return;
+    const lv = review.map(level);
+    const bad = lv.filter((x) => x === 'warn' || x === 'err').length, wait = lv.filter((x) => x === 'wait').length;
+    $('reviewSummary').textContent = `${review.length} Vokabeln · ${bad ? bad + ' auffällig' : 'alles unauffällig'}` + (wait ? ` · ${wait} werden noch geprüft` : '');
+    $('checkBtn').textContent = checking ? 'Wird geprüft …' : 'Erneut prüfen';
+    $('checkBtn').disabled = !!checking;
+    updatePreview();
+  }
+  function renderReview() {
+    $('review').hidden = false;
+    $('reviewRows').innerHTML = review.map((r) => `
+      <div class="rv" data-id="${r.id}">
+        <input type="text" id="rv-f-${r.id}" data-f="front" value="${esc(r.front)}" aria-label="Vorderseite">
+        <input type="text" id="rv-b-${r.id}" data-f="back" value="${esc(r.back)}" aria-label="Rückseite">
+        <button class="icon-btn" data-rm="${r.id}" aria-label="Zeile entfernen" title="Zeile entfernen">✕</button>
+        <div class="rv-status"></div>
+      </div>`).join('');
+    review.forEach(paintRow); paintSummary();
+  }
+  async function checkRow(r) {
+    const v = ++r.v;
+    r.local = localIssues(r);
+    r.tr = { state: 'wait' };
+    paintRow(r); paintSummary();
+    const tr = await trCheck(r);
+    if (v !== r.v || !review || !review.includes(r)) return;
+    r.tr = tr; paintRow(r); paintSummary();
+  }
+  async function recheckAll() {
+    if (!review) return;
+    trBlocked = '';
+    checking++;
+    const queue = [...review];
+    const work = async () => { while (queue.length) await checkRow(queue.shift()); };
+    try { await Promise.all([work(), work(), work()]); } finally { checking--; paintSummary(); }
+  }
+  function buildReview() {
+    const swap = $('swapSides').checked;
+    review = [];
+    $('importText').value.split(/\r?\n/).forEach((line) => {
+      const res = parseLine(line);
+      if (res === null) return;
+      let [f, b] = res || [line.trim(), ''];
+      if (swap && res) [f, b] = [b, f];
+      review.push({ id: uid(), front: f, back: b, local: [], tr: { state: 'wait' }, v: 0 });
+    });
+  }
+  function runCheck() {
+    buildReview();
+    if (!review.length) { clearReview(); return; }
+    renderReview();
+    recheckAll();
+  }
+  function clearReview() {
+    review = null; $('review').hidden = true; $('reviewRows').innerHTML = '';
+    $('checkBtn').textContent = 'Vokabeln prüfen';
+    updatePreview();
+  }
+  function setLangsFromOcr() {
+    const l = OCR_LANG[$('ocrLang').value.split('+')[0]] || 'en';
+    if ($('swapSides').checked) { $('langFront').value = 'de'; $('langBack').value = l; }
+    else { $('langFront').value = l; $('langBack').value = l === 'de' ? 'en' : 'de'; }
+  }
+  setLangsFromOcr();
+  $('ocrLang').addEventListener('change', setLangsFromOcr);
+  $('swapSides').addEventListener('change', () => { setLangsFromOcr(); if (review) runCheck(); });
+  $('checkBtn').addEventListener('click', () => { if (review) recheckAll(); else runCheck(); });
+  ['langFront', 'langBack'].forEach((id) => $(id).addEventListener('change', () => { if (review) recheckAll(); }));
+  $('onlyIssues').addEventListener('change', () => { if (review) review.forEach(paintRow); });
+  $('reviewRows').addEventListener('change', (e) => {
+    const el = e.target.closest('.rv'); if (!el || !e.target.dataset.f || !review) return;
+    const r = review.find((x) => x.id === el.dataset.id); if (!r) return;
+    r[e.target.dataset.f] = e.target.value.trim();
+    checkRow(r);
+  });
+  $('reviewRows').addEventListener('click', (e) => {
+    if (!review) return;
+    const rm = e.target.closest('[data-rm]');
+    if (rm) { review = review.filter((x) => x.id !== rm.dataset.rm); if (!review.length) clearReview(); else { renderReview(); } return; }
+    const ap = e.target.closest('[data-apply]');
+    if (ap) {
+      const r = review.find((x) => x.id === ap.dataset.apply); if (!r || !r.tr.sug) return;
+      r[r.tr.sug.field] = r.tr.sug.value;
+      const inp = document.getElementById((r.tr.sug.field === 'front' ? 'rv-f-' : 'rv-b-') + r.id);
+      if (inp) inp.value = r.tr.sug.value;
+      checkRow(r);
+    }
+  });
 
   /* ---------- Foto-Import (Texterkennung) ---------- */
   let tessLoading = null;
@@ -769,9 +1039,10 @@ details summary { cursor: pointer; font-weight: 700; }
       if (!lines.length) { setP('Auf dem Foto wurde kein Text erkannt. Versuche ein schärferes, helleres Foto.', 0, 'error'); return; }
       const ta = $('importText');
       ta.value = (ta.value.trim() ? ta.value.trimEnd() + '\n' : '') + lines.join('\n');
-      updatePreview();
-      setP(`${lines.length} Zeilen erkannt. Prüfe und korrigiere sie im Textfeld unten.`, 1, 'done');
-      ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setLangsFromOcr();
+      setP(`${lines.length} Zeilen erkannt. Die Liste unten wird automatisch geprüft.`, 1, 'done');
+      runCheck();
+      $('review').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) {
       setP(err && err.message === 'img'
         ? 'Das Bild konnte nicht geöffnet werden. Versuche ein JPG- oder PNG-Foto.'
